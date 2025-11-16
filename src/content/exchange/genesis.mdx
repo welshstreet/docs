@@ -1,0 +1,314 @@
+# Genesis Contract
+
+## Overview
+
+The Genesis contract implements Welsh Street's Liquidity Generation Event (LGE), a two-phase system where users contribute Welsh tokens during an initial contribution window and later claim STREET tokens proportional to their contributions. This mechanism ensures fair distribution of STREET tokens based on community participation.
+
+## Contract Architecture
+
+The Genesis contract manages the entire lifecycle of the token distribution event through distinct phases:
+
+1. **Contribution Phase**: Users contribute Welsh tokens to participate in the LGE
+2. **Claim Phase**: Users claim STREET tokens proportional to their contributions
+
+## State Variables
+
+### Core Variables
+
+```clarity
+(define-data-var claim-active bool false)
+(define-data-var contribute-active bool true)
+(define-data-var addresses (list 5000 principal) (list))
+(define-data-var total-contribution uint u0)
+```
+
+- `claim-active`: Controls whether users can claim STREET tokens (default: false)
+- `contribute-active`: Controls whether users can contribute Welsh tokens (default: true)
+- `addresses`: List of all participants (max 5000 addresses)
+- `total-contribution`: Aggregate amount of Welsh tokens contributed
+
+### Balance Tracking
+
+```clarity
+(define-map balances
+    { address: principal }
+    { balance: uint,
+      claimed: uint }
+)
+```
+
+The `balances` map tracks each participant's contribution and claim status:
+- `balance`: Amount of Welsh tokens contributed by the user
+- `claimed`: Amount of STREET tokens claimed by the user
+
+## Functions
+
+### Public Functions
+
+#### `contribute`
+
+Allows users to contribute Welsh tokens during the contribution phase.
+
+```clarity
+(define-public (contribute (amount uint))
+    (let (
+        (current-total (var-get total-contribution))
+        (current-balance (default-to { balance: u0 } (map-get? balances { address: tx-sender })))
+        (previous-balance (get balance current-balance))
+        (new-balance (+ previous-balance amount))
+        (new-total (+ current-total amount))
+    )
+    (begin
+        (asserts! (is-eq (var-get contribute-active) true) ERR_NOT_ACTIVE_FUND)
+        (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        (try! (contract-call? .welshcorgicoin transfer amount tx-sender .genesis none))
+        (var-set total-contribution new-total)
+        (map-set balances { address: tx-sender } {
+            balance: new-balance,
+            claimed: u0
+            })
+        (if (is-none (index-of? (var-get addresses) tx-sender))
+            (begin
+                (var-set addresses (unwrap-panic (as-max-len? (append (var-get addresses) tx-sender) u5000)))
+            ) true
+        )
+    (ok {
+        amount: amount,
+        total: new-total
+        })
+    )
+    )
+)
+```
+
+**Parameters:**
+- `amount`: Number of Welsh tokens to contribute (in natural units)
+
+**Returns:**
+- `amount`: The contributed amount
+- `total`: New total contribution amount
+
+**Requirements:**
+- Contribution phase must be active (`contribute-active` = true)
+- Amount must be greater than zero
+- User must have sufficient Welsh tokens
+
+#### `claim`
+
+Allows users to claim STREET tokens proportional to their contribution once the claim phase is active.
+
+```clarity
+(define-public (claim)
+    (let (
+        (user-balance-info (default-to { balance: u0 } (map-get? balances { address: tx-sender })))
+        (user-balance (get balance user-balance-info))
+        (total-contrib (var-get total-contribution))
+        (total-street u1000000000000000) ;; 1 billion STREET tokens in natural units
+        (user-claim (if (> total-contrib u0)
+                                (/ (* user-balance total-street) total-contrib)
+                                u0))
+    )
+    (begin
+        (asserts! (is-eq (var-get claim-active) true) ERR_NOT_ACTIVE_FUND)
+        (asserts! (> user-balance u0) ERR_ZERO_AMOUNT)
+        (try! (transformer .street user-claim tx-sender))
+        (map-set balances { address: tx-sender } {
+            balance: u0,
+            claimed: user-claim
+            })
+        (ok {
+            balance: user-balance,
+            claimed: user-claim
+        })
+    )
+    )
+)
+```
+
+**Claim Calculation:**
+The STREET tokens allocated to each user are calculated using the formula:
+```
+user_claim = (user_balance * total_street) / total_contribution
+```
+
+Where:
+- `user_balance`: Welsh tokens contributed by the user
+- `total_street`: 1,000,000,000,000,000 (1 billion STREET tokens in natural units)
+- `total_contribution`: Total Welsh tokens contributed by all users
+
+**Returns:**
+- `balance`: User's original contribution amount
+- `claimed`: Amount of STREET tokens claimed
+
+**Requirements:**
+- Claim phase must be active (`claim-active` = true)
+- User must have contributed Welsh tokens
+- User must not have already claimed
+
+#### Administrative Functions
+
+##### `set-contribute-active`
+
+Toggles the contribution phase on/off. Only callable by the contract owner.
+
+```clarity
+(define-public (set-contribute-active)
+    (begin
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+        (if (var-get contribute-active)
+            (begin
+                (var-set contribute-active false)
+            )
+            (begin
+                (var-set contribute-active true)
+            )
+        )
+        (ok (var-get contribute-active))
+    )
+)
+```
+
+##### `set-claim-active`
+
+Toggles the claim phase on/off. Only callable by the contract owner.
+
+```clarity
+(define-public (set-claim-active)
+    (begin
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+        (if (var-get claim-active)
+            (begin
+                (var-set claim-active false)
+            )
+            (begin
+                (var-set claim-active true)
+            )
+        )
+        (ok (var-get claim-active))
+    )
+)
+```
+
+#### Helper Function
+
+##### `transformer`
+
+Internal function used to transfer STREET tokens to users during the claim process.
+
+```clarity
+(define-public (transformer
+    (token <sip-010>)
+    (amount uint)
+    (recipient principal)
+    )
+    (as-contract (contract-call? token transfer amount tx-sender recipient none))
+)
+```
+
+### Read-Only Functions
+
+#### `get-contribute-active`
+
+Returns the current state of the contribution phase.
+
+```clarity
+(define-read-only (get-contribute-active)
+    (ok (var-get contribute-active))
+)
+```
+
+#### `get-claim-active`
+
+Returns the current state of the claim phase.
+
+```clarity
+(define-read-only (get-claim-active)
+    (ok (var-get claim-active))
+)
+```
+
+#### `get-user-addresses`
+
+Returns the list of all participants.
+
+```clarity
+(define-read-only (get-user-addresses)
+    (ok (var-get addresses)))
+```
+
+#### `get-user-balance`
+
+Returns the balance and claim information for a specific user.
+
+```clarity
+(define-read-only (get-user-balance (address principal))
+    (ok (default-to { balance: u0, claimed: u0 } (map-get? balances { address: address }))))
+```
+
+#### `get-blocks`
+
+Returns current blockchain height information.
+
+```clarity
+(define-read-only (get-blocks)
+    (ok {
+        stacks-block: stacks-block-height,
+        bitcoin-block: burn-block-height
+    })
+)
+```
+
+## Error Constants
+
+```clarity
+(define-constant ERR_ZERO_AMOUNT (err u500))
+(define-constant ERR_NOT_CONTRACT_OWNER (err u501))
+(define-constant ERR_NOT_ACTIVE_FUND (err u502))
+```
+
+- `ERR_ZERO_AMOUNT` (500): Returned when attempting operations with zero amounts
+- `ERR_NOT_CONTRACT_OWNER` (501): Returned when non-owners attempt administrative functions
+- `ERR_NOT_ACTIVE_FUND` (502): Returned when operations are attempted during inactive phases
+
+## Usage Flow
+
+### Phase 1: Contribution Window
+
+1. **Initial State**: 
+   - `contribute-active` = true
+   - `claim-active` = false
+
+2. **User Participation**:
+   - Users call `contribute(amount)` with their desired Welsh token amount
+   - Tokens are transferred from user to the Genesis contract
+   - User's contribution is recorded in the `balances` map
+   - User is added to the `addresses` list (if not already present)
+
+3. **Ongoing Tracking**:
+   - `total-contribution` accumulates all user contributions
+   - Multiple contributions from the same user are aggregated
+
+### Phase 2: Claim Window
+
+1. **Phase Transition** (Contract Owner Only):
+   - Call `set-contribute-active()` to disable contributions
+   - Call `set-claim-active()` to enable claims
+
+2. **User Claims**:
+   - Users call `claim()` to receive their proportional STREET tokens
+   - Claim amount = `(user_contribution * 1_billion_STREET) / total_contributions`
+   - User's balance is reset to 0, claimed amount is recorded
+
+## Conclusion
+
+### Fair Distribution
+The proportional distribution mechanism ensures that users receive STREET tokens exactly proportional to their Welsh token contributions, creating a fair and transparent allocation system.
+
+### Phase-Based Control
+The two-phase system prevents simultaneous contribution and claiming, ensuring the integrity of the distribution process.
+
+### Participant Tracking
+The contract maintains a comprehensive record of all participants and their contribution/claim history.
+
+### Access Control
+Administrative functions are restricted to the contract owner, preventing unauthorized manipulation of the LGE phases.

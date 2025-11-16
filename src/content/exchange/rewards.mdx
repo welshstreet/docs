@@ -1,10 +1,10 @@
 import { Callout } from 'nextra/components'
 
-# Welsh Street Exchange Rewards System
+# Rewards System
 
 ## Overview
 
-The Welsh Street Exchange implements a block reset rewards strategy that provides fair, time-weighted reward distribution to liquidity providers while maintaining system simplicity and gas efficiency. This system eliminates whale manipulation vulnerabilities and provides a superior user experience compared to traditional AMM reward mechanisms.
+The Welsh Street Exchange implements a zero debt cumulative rewards system with global index accounting that provides fair reward distribution to liquidity providers while maintaining system simplicity and gas efficiency. This system eliminates whale manipulation vulnerabilities through join-time snapshots and provides a superior user experience compared to traditional AMM reward mechanisms.
 
 ## What Makes Welsh Street Special
 
@@ -28,74 +28,90 @@ Welsh Street rewards accumulate from two primary sources:
 - Liquidity Incentives: Additional rewards to bootstrap and maintain liquidity
 - Protocol Growth: Long-term sustainability through emission schedules
 
-### 3. Donations
-- `donate-rewards` unlimited donation capability
-- No artificial limits imposed because:
-- Community Benefit: Donations benefit all LP holders proportionally
-- Frontend access for direct treasury and governance distribution to LP holders.
+### 3. Donations & Enhanced Features
+- **Donation System**: `donate-rewards` unlimited donation capability with automatic tracking
+- **Emission Processing**: `update-emission-rewards` with epoch-based protection
+- **Cleanup System**: Automatic detection and redistribution of untracked tokens
+- **Perfect Accounting**: Complete tracking of distributed vs. claimed rewards
+- **Dust Recovery**: Intelligent cleanup of small amounts to prevent token lock
 
 
 ## Technical Implementation
 
 ### Core Data Structure
 
-The rewards system tracks each user's position and entry timing through a simple but powerful data structure:
+The rewards system tracks each user's position and entry timing through a cumulative index system with zero debt initialization:
 
 ```clarity
+;; Global cumulative indexes (never decrease, only increase)
+(define-data-var global-index-a uint u0)  ;; Welsh rewards per LP (PRECISION scaled)
+(define-data-var global-index-b uint u0)  ;; Street rewards per LP (PRECISION scaled)
+
+;; Perfect accounting system
+(define-data-var total-distributed-a uint u0)  ;; Total Welsh rewards added
+(define-data-var total-distributed-b uint u0)  ;; Total Street rewards added
+(define-data-var total-claimed-a uint u0)      ;; Total Welsh rewards claimed
+(define-data-var total-claimed-b uint u0)      ;; Total Street rewards claimed
+
 (define-map user-rewards
   { account: principal }
   {
-    balance-lp: uint,      ;; Current LP token balance (real-time)
-    block-lp: uint,        ;; Block when user last modified LP position (TIME TRACKING)
-    debt-a: uint,          ;; Welsh rewards debt at entry (PREVENTS DILUTION)
-    debt-b: uint,          ;; Street rewards debt at entry (PREVENTS DILUTION)
+    balance-lp: uint,    ;; User's LP token balance
+    block-lp: uint,      ;; Block when user joined/updated
+    debt-a: uint,        ;; Accumulated claimed Welsh rewards
+    debt-b: uint,        ;; Accumulated claimed Street rewards
+    index-a: uint,       ;; User's Welsh join-time snapshot
+    index-b: uint        ;; User's Street join-time snapshot
   }
 )
 ```
 
 Key Protection Mechanisms:
-- `block-lp`: Time-weighted rewards - tracks when user entered position
-- `debt-a/debt-b`: Anti-dilution protection - prevents claiming pre-entry rewards
-- `balance-lp`: Real-time tracking - reflects current LP token holdings
+- **Global indexes**: Cumulative-only system that never decreases
+- **Join-time snapshots** (`index-a/b`): Lock baseline preventing retroactive claims
+- **Zero debt initialization**: New users start with `debt-a: 0, debt-b: 0`
+- **Perfect accounting**: Complete tracking of distributed vs. claimed rewards
+- **High precision**: Uses `PRECISION u1000000000` (9 decimals) for accuracy
 
 ### Claim Rewards Logic
 
-The core claiming mechanism ensures fair distribution while preventing manipulation:
+The zero debt cumulative system ensures fair distribution with immediate earning capability:
 
 ```clarity
 (define-public (claim-rewards)
   (let (
-    ;; Get current LP balance (can change without claiming)
-    (balance-lp (unwrap! (contract-call? .credit get-balance tx-sender) ERR_LIQUIDITY_BALANCE_NOT_AVAILABLE))
-    
-    ;; Get user's historical entry data
-    (info (default-to {balance-lp: u0, block-lp: u0, debt-a: u0, debt-b: u0}
-                     (map-get? user-rewards { account: tx-sender })))
-    
-    ;; Calculate total accumulated rewards based on CURRENT LP balance
-    (acc-a (/ (* balance-lp (var-get index-a)) DECIMALS))
-    (acc-b (/ (* balance-lp (var-get index-b)) DECIMALS))
-    
-    ;; Get debt from when user entered position
+    (balance-lp (unwrap! (contract-call? .credit get-balance tx-sender) ERR_BALANCE_NOT_AVAILABLE))
+    (info (default-to {
+      balance-lp: u0, block-lp: u0, debt-a: u0, debt-b: u0, index-a: u0, index-b: u0}
+      (map-get? user-rewards { account: tx-sender })))
+    (current-global-a (var-get global-index-a))
+    (current-global-b (var-get global-index-b))
+    (user-index-a (get index-a info))
+    (user-index-b (get index-b info))
+    ;; Earned = LP_balance × (current_global_index - user_join_index) / PRECISION
+    (earned-a (/ (* balance-lp (- current-global-a user-index-a)) PRECISION))
+    (earned-b (/ (* balance-lp (- current-global-b user-index-b)) PRECISION))
     (deb-a (get debt-a info))
     (deb-b (get debt-b info))
-    
-    ;; Claimable = Total Accumulated - Entry Debt (TIME-WEIGHTED REWARDS)
-    (claimed-a (if (> acc-a deb-a) (- acc-a deb-a) u0))
-    (claimed-b (if (> acc-b deb-b) (- acc-b deb-b) u0))
+    ;; Unclaimed = earned - previously_claimed_debt
+    (claimed-a (if (> earned-a deb-a) (- earned-a deb-a) u0))
+    (claimed-b (if (> earned-b deb-b) (- earned-b deb-b) u0))
   )
-    ;; Transfer rewards WITHOUT affecting LP position
     (begin
+      ;; Transfer tokens if claimable
       (if (> claimed-a u0) (try! (transformer .welshcorgicoin claimed-a tx-sender)) true)
       (if (> claimed-b u0) (try! (transformer .street claimed-b tx-sender)) true)
-      
-      ;; Update debt to current accumulated (prevents double-claiming)
-      ;; PRESERVES block-lp (maintains time tracking)
+      ;; Update perfect accounting tracking
+      (var-set total-claimed-a (+ (var-get total-claimed-a) claimed-a))
+      (var-set total-claimed-b (+ (var-get total-claimed-b) claimed-b))
+      ;; Update user debt to reflect claims
       (map-set user-rewards { account: tx-sender } {
         balance-lp: balance-lp,
-        block-lp: (get block-lp info),  ;; PRESERVED - no position change
-        debt-a: acc-a,                  ;; UPDATED - prevents re-claiming
-        debt-b: acc-b                   ;; UPDATED - prevents re-claiming
+        block-lp: (get block-lp info),
+        debt-a: (+ deb-a claimed-a),  ;; Accumulate claimed amounts
+        debt-b: (+ deb-b claimed-b),
+        index-a: user-index-a,        ;; Preserve join-time snapshot
+        index-b: user-index-b
       })
       (ok { claimed-a: claimed-a, claimed-b: claimed-b })
     )
@@ -104,14 +120,14 @@ The core claiming mechanism ensures fair distribution while preventing manipulat
 ```
 
 How It Works:
-1. Calculate total rewards user would get for their current LP balance
-2. Subtract entry debt (rewards accumulated before they provided liquidity)
-3. Transfer the difference (only rewards earned during their participation)
-4. Update debt to prevent double-claiming
-5. Preserve position tracking (`block-lp` unchanged - no position modification)
+1. **Calculate earned rewards**: `LP_balance × (current_global_index - user_join_index) / PRECISION`
+2. **Zero debt benefit**: New users start earning immediately with no artificial barriers
+3. **Join-time protection**: User snapshots prevent claiming pre-entry rewards
+4. **Perfect accounting**: Track total claimed amounts across all users
+5. **Preserve snapshots**: Keep join-time indexes unchanged for future calculations
 
 <Callout type="important">Position preservation only applies to `claim-rewards()`.
-LP operations (provide/remove/lock/burn liquidity) call `update-user-rewards()` which RESETS everything.</Callout>
+LP operations (provide/remove/lock/burn liquidity) call `update-user-rewards()` which resets join-time snapshots to current global indexes.</Callout>
 
 ## Built-in Anti-Whale Protection:
 
@@ -122,25 +138,26 @@ Traditional AMM reward systems are vulnerable to "whale gaming attacks" where la
 2. Claim disproportionate rewards from fees generated before their entry
 3. Immediately withdraw and steal rewards from honest long-term providers
 
-### Block Reset Strategy Eliminates Whale Attacks
+### Zero Debt Cumulative System Eliminates Whale Attacks
 
-Our `user-rewards` system automatically prevents whale manipulation. For example, if a whale deposits massive LP position:
+Our cumulative index system with join-time snapshots automatically prevents whale manipulation. For example, if a whale deposits massive LP position:
 
-- Day 30: Diva has 100K LP, accumulated 50,000 WELSH rewards
+- Day 30: Diva has 100K LP, can claim rewards based on her join-time snapshot
 - Day 31: Whale deposits 10M LP
-- Gets block-lp = current block (can't claim historical rewards)
-- Gets debt-a/debt-b = current accumulated rewards (entry debt set)
-- When claiming: Whale can't touch Diva's 50,000 WELSH (protected by debt mechanism)
-- Result: Each user only gets rewards proportional to their time-weighted contribution
+- Gets `index-a/b` = current global indexes (can't claim historical rewards)
+- Gets `debt-a/b` = 0 (zero debt - starts earning immediately)
+- When claiming: Whale only earns from rewards accumulated AFTER their entry
+- Result: Each user only gets rewards proportional to their participation period, protected by join-time snapshots
 
 ### Simple System vs Complex Anti-Whale Measures
 
-The Welsh Street simple approach to reward tracking has many advantages, especially in the context of a blockchain.
+The Welsh Street zero debt cumulative approach has many advantages, especially in the context of a blockchain.
 
-✅ **Advantages of a Simple Debt Rewards System:**
-- Gas Efficient: No complex time calculations or vesting logic
-- Fair: Same rate for everyone regardless of position size
-- Maintainable: Simple code is more secure and auditable
+✅ **Advantages of Zero Debt Cumulative System:**
+- Gas Efficient: High-precision math with minimal computational overhead
+- Fair: Join-time snapshots ensure proportional distribution
+- Immediate Earning: New users start with zero debt and earn immediately
+- Maintainable: Cumulative indexes are simple and mathematically provable
 
 ❌ **Problems with Complex Dynamic Time Lock System:**
 - High Gas Costs: Time-based calculations expensive on-chain
@@ -149,12 +166,12 @@ The Welsh Street simple approach to reward tracking has many advantages, especia
 
 | Aspect | Welsh Street | Complex Anti-Whale |
 |--------|----------------------|-------------------|
-| Gas Costs | ✅ Minimal | ❌ High (time calculations) |
-| User Experience | ✅ Predictable | ❌ Confusing penalties |
-| Security | ✅ Simple = secure | ❌ Complex = attack surface |
-| Whale Protection | ✅ Automatic via debt | ❌ Artificial restrictions |
-| Maintenance | ✅ Easy to audit | ❌ Complex edge cases |
-| Time Lockups | ✅ None | ❌ Annoying |
+| Gas Costs | ✅ Minimal (high-precision math) | ❌ High (time calculations) |
+| User Experience | ✅ Immediate earning capability | ❌ Confusing penalties |
+| Security | ✅ Cumulative = provable | ❌ Complex = attack surface |
+| Whale Protection | ✅ Automatic via snapshots | ❌ Artificial restrictions |
+| Maintenance | ✅ Mathematical simplicity | ❌ Complex edge cases |
+| Time Lockups | ✅ None (zero debt) | ❌ Annoying |
 
 ## How Welsh Street Compares to Other AMMs
 
@@ -167,9 +184,16 @@ The Welsh Street simple approach to reward tracking has many advantages, especia
 5. Compound Friction: Extra steps discourage frequent reward claiming
 6. 💸 FORCED IMPERMANENT LOSS REALIZATION: Must crystallize IL to claim rewards
 
-### Welsh Street's Superior Approach
+### Welsh Street's Zero Debt Cumulative Approach
 
-✅ Revolutionary Advantages:
+✅ Revolutionary Technical Advantages:
+- **Zero Debt System**: New users start earning immediately with no barriers
+- **Join-time Protection**: Snapshots prevent retroactive reward claims
+- **Perfect Accounting**: Mathematical integrity with complete flow tracking
+- **High Precision**: 9-decimal precision prevents calculation errors
+- **Cleanup System**: Automatic recovery of untracked tokens and dust
+
+✅ Revolutionary User Advantages:
 
 | Feature | Welsh Street | Traditional AMMs |
 |---------|-------------|------------------|
@@ -366,10 +390,27 @@ Here's what happens if a user changes their LP without claiming rewards.
 1. User has unclaimed rewards but calls exchange contract directly:
 2. Via block explorer or CLI user calls (contract-call? .exchange provide-liquidity u1000000)
 3. Exchange calls: (contract-call? .rewards update-user-rewards tx-sender)
-4. update-user-rewards resets block-lp and debt to current values
-5. Unclaimed rewards are LOST FOREVER ❌
-6. User's new LP position starts fresh with zero debt
+4. update-user-rewards resets join-time snapshots to current global indexes
+5. Unclaimed rewards are redistributed to other LPs through the cumulative system ❌
+6. User's new LP position starts fresh with zero debt (immediate earning capability)
 ```
+
+### High-Precision Mathematics
+
+The rewards system uses enhanced precision to ensure accuracy with small amounts:
+
+```clarity
+;; High precision constant (9 decimal places)
+(define-constant PRECISION u1000000000)
+
+;; Global index calculation with precision
+(index-increment (/ (* amount PRECISION) total-lp))
+
+;; User earning calculation
+(earned-amount (/ (* lp-balance (- current-global-index user-join-index)) PRECISION))
+```
+
+This ensures accurate reward calculations even for micro-amounts and prevents precision loss that could accumulate over time.
 
 ### What the Frontend Protects
 The frontend warning system only works when users use the Welsh Street Exchange UI:
@@ -408,21 +449,26 @@ Reset Function Logic in the **Rewards** contract:
 ```clarity
 (define-public (update-user-rewards (user principal))
   (let (
-    (current-lp-balance (unwrap! (contract-call? .credit get-balance user) ERR_LIQUIDITY_BALANCE_NOT_AVAILABLE))
-    (current-index-a (var-get index-a))
-    (current-index-b (var-get index-b))
+    (current-lp-balance (unwrap! (contract-call? .credit get-balance user) ERR_BALANCE_NOT_AVAILABLE))
+    (current-global-index-a (var-get global-index-a))
+    (current-global-index-b (var-get global-index-b))
     (current-block stacks-block-height)
+    (existing-info (map-get? user-rewards { account: user }))
   )
     (begin
       ;; SECURITY: Only exchange contract can call this
       (asserts! (is-eq contract-caller .exchange) ERR_NOT_CONTRACT_OWNER)
 
-      ;; RESET: Set new baseline for reward calculations
+      ;; ZERO DEBT RESET: New users start with zero debt, immediate earning capability
       (map-set user-rewards { account: user } {
-        balance-lp: current-lp-balance,  ;; Current LP balance
-        block-lp: current-block,         ;; NEW entry time
-        debt-a: (/ (* current-lp-balance current-index-a) DECIMALS),  ;; NEW debt baseline
-        debt-b: (/ (* current-lp-balance current-index-b) DECIMALS),  ;; NEW debt baseline
+        balance-lp: current-lp-balance,
+        block-lp: (if (is-some existing-info) (get block-lp (unwrap-panic existing-info)) current-block),
+        ;; Zero debt for new users - immediate earning capability
+        debt-a: (if (is-some existing-info) (get debt-a (unwrap-panic existing-info)) u0),
+        debt-b: (if (is-some existing-info) (get debt-b (unwrap-panic existing-info)) u0),
+        ;; Join-time snapshots prevent retroactive claims
+        index-a: current-global-index-a,
+        index-b: current-global-index-b
       })
       (ok true)
     )

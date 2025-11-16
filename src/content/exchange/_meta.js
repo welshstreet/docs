@@ -1,4 +1,5 @@
 export default {
+  genesis: 'Genesis',
   exchange: 'Exchange',
   street: 'Street Token',
   credit: 'Credit Token',
