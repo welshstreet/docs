@@ -8,5 +8,5 @@ export default {
   rewards: 'Rewards',
   revenue: 'Revenue Model',
   protection: 'User Protection',
-  testing: 'Coverage Report'
+  testing: 'Testing Coverage'
 }

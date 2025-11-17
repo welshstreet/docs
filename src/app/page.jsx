@@ -40,7 +40,7 @@ export default function IndexPage() {
 				</a>
 			</div>
 			<div className="description">
-				The Welsh Street Exchange is the world's first Meme Rewards Decentralized Exchange built Welsh, Bitcoin's first dog coin. It's an automated market maker (AMM) 100% dedicated to the activation and growth of the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms for the innovative DEX.
+				The Welsh Street Exchange is the world's first Meme Rewards Decentralized Exchange built for Welsh, Bitcoin's first dog coin. It's an automated market maker (AMM) 100% dedicated to the activation and growth of the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms for the innovative DEX.
 			</div>
 		</div>
 	)
