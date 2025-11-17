@@ -17,7 +17,7 @@ export default function IndexPage() {
 
 			<div className="button-container">
 				<a 
-					href="https://welshstreet.io" 
+					href="/" 
 					target="_blank" 
 					rel="noopener noreferrer"
 					className="btn-primary btn-welsh"
@@ -25,7 +25,7 @@ export default function IndexPage() {
 					Welsh Street
 				</a>
 				<a 
-					href="https://exchange.welshstreet.io" 
+					href="/" 
 					target="_blank" 
 					rel="noopener noreferrer"
 					className="btn-primary btn-exchange"
