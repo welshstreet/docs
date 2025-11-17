@@ -45,7 +45,7 @@ export default async function RootLayout({ children }) {
       <Head faviconGlyph="✦" />
       <body>
         <Layout
-          banner={<Banner storageKey="exchangeBanner">The Exchange is Live</Banner>}
+          // banner={<Banner storageKey="exchangeBanner">The Exchange is Live</Banner>}
           copyPageButton={false}
           docsRepositoryBase="https://github.com/enjoywithouthey/welsh-street-documentation/tree/main"
           editLink="View on GitHub"
