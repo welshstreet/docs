@@ -2,6 +2,7 @@ export default {
   disclaimer: '',
   introduction: '',
   welshcorgicoin: 'Welsh Corgi Coin',
+  buywelsh: 'Buy Welsh',
   community: 'Community Tokens',
   exchange: 'Welsh Street',
   lge: 'Liquidity Generation Event',

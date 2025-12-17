@@ -47,14 +47,16 @@ export default async function RootLayout({ children }) {
         <Layout
           // banner={<Banner storageKey="exchangeBanner">The Exchange is Live</Banner>}
           copyPageButton={false}
-          docsRepositoryBase="https://github.com/enjoywithouthey/welsh-street-documentation/tree/main"
+          docsRepositoryBase="https://github.com/enjoywithouthey/welsh-street-docs/tree/main"
           editLink="View on GitHub"
           feedback={{ content:"Contribute" }}
-          footer={<Footer className="custom-footer" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100px', textAlign: 'center', padding: '0', margin: '0'}}>
-            <a href="https://github.com/enjoywithouthey" target="_blank" rel="noopener" className="footer-link">Made with 🧡 by @enjoywithouthey</a></Footer>}
+          footer={<Footer className="custom-footer">
+              <a href="https://github.com/enjoywithouthey" target="_blank" rel="noopener" className="footer-link">Made with 🧡 by @enjoywithouthey</a>
+            </Footer>}
           navbar={navbar}
           pageMap={pageMap}
           sidebar={{ defaultMenuCollapseLevel: 1 }}
+          darkMode={false}
         >
           {children}
         </Layout>
