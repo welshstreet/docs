@@ -1,10 +1,10 @@
-import './documentation.css'
+import './docs.css'
 
 export default function IndexPage() {
 	return (
 		<div className="container">
 			<h1 className="main-title">
-				Welsh Street Exchange
+				Welsh Street
 			</h1>
 			<h2 className="subtitle">
 				Documentation
@@ -17,10 +17,10 @@ export default function IndexPage() {
 
 			<div className="button-container">
 				<a 
-					href="/" 
+					href="https://www.welshstreet.com/" 
 					target="_blank" 
 					rel="noopener noreferrer"
-					className="btn-primary btn-welsh"
+					className="btn btn-primary btn-welsh"
 				>
 					Welsh Street
 				</a>
@@ -28,19 +28,19 @@ export default function IndexPage() {
 					href="/" 
 					target="_blank" 
 					rel="noopener noreferrer"
-					className="btn-primary btn-exchange"
+					className="btn btn-primary btn-exchange"
 				>
-					Exchange
+					App
 				</a>
 				<a 
 					href="/contracts" 
-					className="btn-primary btn-documentation"
+					className="btn btn-primary btn-documentation"
 				>
-					Documentation
+					Docs
 				</a>
 			</div>
 			<div className="description">
-				The Welsh Street Exchange is the world's first Meme Rewards Decentralized Exchange built for Welsh, Bitcoin's first dog coin. It's an automated market maker (AMM) 100% dedicated to the activation and growth of the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms for the innovative DEX.
+				Welsh Street is the world's first dedicated Meme Rewards project built for Welsh, first dog coin built on Bitcoin. The Exchange is an automated market maker (AMM) 100% dedicated to the activation and growth of the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms of service for the decentralized application.
 			</div>
 		</div>
 	)

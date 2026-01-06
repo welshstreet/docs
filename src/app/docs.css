@@ -3,7 +3,7 @@
 :root {
   --orange: #ff6b35;
   --blue: #60a5fa;
-  --purp: #c084fc;
+  --purple: #c084fc;
 }
 
 body, html {
@@ -21,7 +21,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('/welsh-street-suit.png');
+  background-image: url('/wall-street-lb.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -92,6 +92,39 @@ a {
   align-items: center;
 }
 
+/* Base button styling */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  min-width: 148px;
+  transition: all 0.3s ease-in-out;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  text-decoration: none;
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 /* Button base styles with transitions */
 a, .btn-welsh, .btn-exchange, .btn-documentation {
   transition: all 0.3s ease-in-out !important;
@@ -112,8 +145,14 @@ a, .btn-welsh, .btn-exchange, .btn-documentation {
 
 .btn-documentation:hover {
     background-color: rgba(192, 132, 252, 0.2) !important; /* semi-transparent purple */
-    border-color: var(--purp) !important;
+    border-color: var(--purple) !important;
     color: white !important
+}
+
+.btn-red:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important; /* semi-transparent red */
+  border-color: #ef4444 !important;
+  color: white !important
 }
 
 .description {

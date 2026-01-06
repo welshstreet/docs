@@ -3,25 +3,17 @@ import { Footer, Layout, Navbar } from 'nextra-theme-docs'
 import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
-import './documentation.css'
+import './docs.css'
 
 export const metadata = {
-  metadataBase: new URL('https://nextra.site'),
+  metadataBase: new URL('https://docs.welshstreet.com/'),
   title: {
     template: '%s'
   },
-  description: 'Nextra: the Next.js site builder',
-  applicationName: 'Nextra',
-  generator: 'Next.js',
-  appleWebApp: {
-    title: 'Nextra'
-  },
-  other: {
-    'msapplication-TileImage': '/ms-icon-144x144.png',
-    'msapplication-TileColor': '#fff'
-  },
+  description: 'Welsh Street Documentation',
+  applicationName: 'Welsh Street',
   twitter: {
-    site: 'https://nextra.site'
+    site: 'https://x.com/welshstreet'
   }
 }
 
@@ -35,8 +27,7 @@ export default async function RootLayout({ children }) {
         </div>
       }
       logoLink="/"  // Custom logo link
-      // Next.js discord server
-      chatLink="https://discord.gg/MRbsmVxZWj"
+      chatLink="https://discord.gg/zWzvtVrPeJ"
     />
   )
   const pageMap = await getPageMap()
