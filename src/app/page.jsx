@@ -7,7 +7,7 @@ export default function IndexPage() {
 				Welsh Street
 			</h1>
 			<h2 className="subtitle">
-				Documentation Test
+				Documentation
 			</h2>
 			{/* <img 
 				src="/wolf-of-yacht-pfp.png" 
@@ -25,7 +25,7 @@ export default function IndexPage() {
 					Welsh Street
 				</a>
 				<a 
-					href="/" 
+					href="https://app.welshstreet.com/" 
 					target="_blank" 
 					rel="noopener noreferrer"
 					className="btn btn-primary btn-exchange"
@@ -33,14 +33,14 @@ export default function IndexPage() {
 					App
 				</a>
 				<a 
-					href="/contracts" 
+					href="/docs/disclaimer" 
 					className="btn btn-primary btn-documentation"
 				>
 					Docs
 				</a>
 			</div>
 			<div className="description">
-				Welsh Street is the world's first dedicated Meme Rewards project built for Welsh, first dog coin built on Bitcoin. The Exchange is an automated market maker (AMM) 100% dedicated to the activation and growth of the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms of service for the decentralized application.
+				Welsh Street is the world's first dedicated Meme Rewards project dedicated to Welsh, the first dog coin built on Bitcoin. The Welsh Street Decentralized Exchange is an automated market maker (AMM) designed to the activate and grow the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms of service for the decentralized application.
 			</div>
 		</div>
 	)
