@@ -2,44 +2,51 @@ import { Callout } from 'nextra/components'
 
 # Tokenomics
 
-## Overall Tokenomics
+STREET presents a new tokenomic model to the crypto space: dedicated meme rewards.  The notion of minting a token to boost a base token, such as WELSH, only makes sense when the base token is a fixed-supply, full-distributed community token.
 
-## Community Distribution
+The big idea is - as STREET tokens are minted and rewarded to liquidity providers, the selling of these rewards puts constant buying pressure on the base token.  As the base token has no more issuance, the creation of the rewards token is designed to create an economic model.
 
-The initial 5 billion STREET mint (50% of total supply) follows a strategic allocation designed to bootstrap the ecosystem while ensuring fair distribution:
-
-```clarity
-;; STREET MINT ALLOCATION (5 Billion Total)
-(define-constant STREET_MINT_CAP u5000000000000000) ;; 5B tokens (50% of supply)
-
-(define-public (street-mint (amount uint))
-    (begin
-        (asserts! (<= (+ (var-get street-minted) amount) STREET_MINT_CAP) ERR_EXCEEDS_STREET_MINT_CAP)
-        (try! (ft-mint? street amount tx-sender)) ;; Mints to deployer for distribution
-    )
-)
-```
-
-**Distribution Breakdown (5 Billion Initial Mint)**:
-
-| Allocation | Amount | Percentage | Purpose |
-|------------|--------|------------|---------|
-| **Development** | 500M | 10% | Protocol development, team compensation |
-| **Community** | 500M | 10% | Community rewards, airdrops, incentives |
-| **Locked Liquidity** | 1B | 20% | Permanent protocol-owned base liquidity |
-| **Public Seed Round** | 500M | 10% | Initial public distribution/fundraising |
-| **Future Reserve** | 2.5B | 50% | Strategic partnerships, ecosystem growth |
-
-**The Other 50% (5 Billion)**: Reserved **exclusively for LP emission rewards** over ~5.5 years, ensuring sustainable liquidity provider incentives.
+However, there are two major decisions that needs to be made regarding the tokenomics of the rewards token: Fixed Supply or Infinite Supply.  This documentation highlights the pros and cons of both, including the initial token distribution.
 
 ![Welsh Corgi giving a whiteboard presentation](/whiteboard-lb.png)
 
-## Emission Distribution
+## The Great Debate: Infinite Supply vs Fixed Supply
 
+Welsh is already a fixed-supply community coin.  Street isn't designed to be a community coin.  Street is a meme rewards token designed to boost welsh.  If the supply remains infinite, that means Street Rewards mint to Welsh Credit holders forever.
 
-## The Kill Switch Decision
+**Infinite Supply - Default DOGE Model**
 
-STREET features a unique **one-way kill switch** that gives the community ultimate control over tokenomics. This irreversible decision allows transitioning from DOGE-style infinite supply to Bitcoin-style fixed supply. The idea is to start with infinite supply for growth and adoption. At any time the community can can decide when to cap the supply. It's one-time switched, though. Once capped, it's permanently capped.
+**Pros:**
+- ✅ **Perpetual LP rewards** - Liquidity providers earn forever
+- ✅ **Sustainable yield** - Never-ending incentive to provide liquidity
+- ✅ **Proven model** - DOGE reached $80B+ market cap with infinite supply
+- ✅ **Anti-hoarding** - Encourages usage over speculation
+- ✅ **Economic growth** - Accommodates expanding user base
+
+**Cons:**
+- ❌ **Inflation pressure** - Constant new token creation
+- ❌ **Dilution effects** - Existing holders get smaller percentage over time
+- ❌ **Store of value concerns** - Harder to maintain purchasing power
+
+**Fixed Supply - Capped supply at 10,000,000,000 tokens**
+
+**Pros:**
+- ✅ **Scarcity premium** - Limited supply can drive value appreciation
+- ✅ **Store of value** - No inflation reduces purchasing power erosion
+- ✅ **Speculation appeal** - Fixed cap attracts different investor class
+- ✅ **Parity with WELSH** - 10B STREET matches 10B WelshCorgiCoin supply
+
+**Cons:**
+- ❌ **Finite LP rewards** - Eventually no new tokens to distribute
+- ❌ **Yield sustainability** - Long-term LP incentive challenges
+- ❌ **Growth limitations** - Fixed supply may constrain ecosystem expansion
+- ❌ **Early adopter bias** - Benefits early participants disproportionately
+
+At the time of launching STREET, it is impossible to determine the proper choice for STREET tokenomics: Fixed or Infinite Supply.  The good news is that this decision is built into the protocol via a **Kill Switch** design.
+
+### The Kill Switch
+
+The STREET contract features a unique **one-way kill switch** that gives the community ultimate control over final tokenomic decision. This irreversible decision allows transitioning from DOGE-style infinite supply to Bitcoin-style fixed supply. The idea is to start with infinite supply for growth and adoption. At any time the community can can decide when to cap the supply. It's one-time switched, though. Once capped, it's permanently capped forever.
 
 ```clarity
 ;; KILL SWITCH MECHANISM (ONE-WAY ONLY)
@@ -63,42 +70,8 @@ STREET features a unique **one-way kill switch** that gives the community ultima
   ERR_EXCEEDS_TOTAL_SUPPLY)
 ```
 
-<Callout type="important">Even if the kill switch is activated immediately, STREET still emits until reaching parity with Welshcorgicoin's 10B supply.</Callout>
 
-## The Great Debate: Infinite Supply vs Fixed Supply
-
-But what if we don;t want to cap the supply.  Welsh is already a fixed-supply community coin.  Street isn't designed to be a community coin.  Street is a meme rewards token designed to boost welsh.  If the supply remains infinite, that means Street Rewards to Welsh Credit holders will last forever.  Does it sound crazy?  Well, there's another famous dog meme with an infinite supply: DOGE
-
-
-**Infinite Supply (Default - DOGE Model)**
-
-**Pros:**
-- ✅ **Perpetual LP rewards** - Liquidity providers earn forever
-- ✅ **Sustainable yield** - Never-ending incentive to provide liquidity
-- ✅ **Proven model** - DOGE reached $80B+ market cap with infinite supply
-- ✅ **Anti-hoarding** - Encourages usage over speculation
-- ✅ **Economic growth** - Accommodates expanding user base
-
-**Cons:**
-- ❌ **Inflation pressure** - Constant new token creation
-- ❌ **Dilution effects** - Existing holders get smaller percentage over time
-- ❌ **Store of value concerns** - Harder to maintain purchasing power
-
-**🔒 Fixed Supply (Kill Switch Activated - Bitcoin Model)**
-
-**Pros:**
-- ✅ **Scarcity premium** - Limited supply can drive value appreciation
-- ✅ **Store of value** - No inflation reduces purchasing power erosion
-- ✅ **Speculation appeal** - Fixed cap attracts different investor class
-- ✅ **Parity with WELSH** - 10B STREET matches 10B WelshCorgiCoin supply
-
-**Cons:**
-- ❌ **Finite LP rewards** - Eventually no new tokens to distribute
-- ❌ **Yield sustainability** - Long-term LP incentive challenges
-- ❌ **Growth limitations** - Fixed supply may constrain ecosystem expansion
-- ❌ **Early adopter bias** - Benefits early participants disproportionately
-
-## Timeline
+### Timeline
 
 In the fixed supply scenario, the emission mints continues until the total supply cap of 10B tokens is reached.
 
@@ -122,7 +95,40 @@ In the fixed supply scenario, the emission mints continues until the total suppl
 )
 ```
 
-Emitting 10,000 tokens every Bitcoin block until the gives community ample time to mature governance and make an informed decision.
+Emitting 10,000 tokens every Bitcoin block until the gives community ample time to mature governance and make an informed decision. To the best of our knowledge, no one has ever launched an infinite supply token with the sole purpose of boosting a fixed-supply token. At the programmed emission rate, it will take about 5 years for the supply cap to be reached, so the community has plenty of time to debate, model and decide the best fate of the project.
 
-To the best of our knowledge, no one has ever launched an infinite supply token with the sole purpose of boosting a fixed-supply token.
+<Callout type="important">Even if the kill switch is activated today, STREET still emits until reaching parity with WELSH's 10B supply.</Callout>
 
+
+
+## Initial Distribution
+
+Regardless of the Fixed vs Infinite supply debate, a hypothetical supply of 10,000,000,000 tokens was used to calculate the initial token distributions for STREET.  We have to draw a line somewhere.
+
+Five billion STREET is set aside for the rewards emissions, even if the kill switch is flipped.  This 5 billion would represent 50% of the total supply.
+
+Another 5 billion STREET (50% of total supply) is set aside to follow a strategic allocation designed to bootstrap the Welsh Street ecosystem while ensuring a fair distribution:
+
+```clarity
+;; STREET MINT ALLOCATION (5 Billion Total)
+(define-constant STREET_MINT_CAP u5000000000000000) ;; 5B tokens (50% of supply)
+
+(define-public (street-mint (amount uint))
+    (begin
+        (asserts! (<= (+ (var-get street-minted) amount) STREET_MINT_CAP) ERR_EXCEEDS_STREET_MINT_CAP)
+        (try! (ft-mint? street amount tx-sender)) ;; Mints to deployer for distribution
+    )
+)
+```
+
+## Distribution Breakdown
+
+Based on a 10 Billion Hypothetical Supply Cap:
+
+| Allocation | Amount | Percentage | Purpose |
+|------------|--------|------------|---------|
+| **Emission Rewards** | 5B | 50% | Rewards to CREDIT Holders |
+| **Initial Locked Liquidity** | 2B | 20% | Permanent locked liquidity |
+| **Liquidity Generation Event** | 1B | 10% | Initial public distribution and fundraising |
+| **Development Allocation** | 1B | 10% | Protocol development, team compensation |
+| **Treasury Reserve** | 1B | 10% | Marketing, community events and growth initiatives |
