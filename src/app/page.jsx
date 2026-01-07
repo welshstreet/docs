@@ -22,7 +22,7 @@ export default function IndexPage() {
 					rel="noopener noreferrer"
 					className="btn btn-primary btn-welsh"
 				>
-					Welsh Street
+					Home
 				</a>
 				<a 
 					href="https://app.welshstreet.com/" 
