@@ -7,7 +7,7 @@ export default function IndexPage() {
 				Welsh Street
 			</h1>
 			<h2 className="subtitle">
-				Documentation
+				Documentation Test
 			</h2>
 			{/* <img 
 				src="/wolf-of-yacht-pfp.png" 
