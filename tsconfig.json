@@ -34,7 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/components/simple-copy-button.jsx",
-    "src/content/exchange/fuzzing.mdx",
+    "src/content/core/fuzzing.mdx",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [

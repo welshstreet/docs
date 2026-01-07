@@ -1,7 +1,5 @@
 export default {
   contracts: 'Contracts',
-  genesis: 'Genesis',
-  exchange: 'Exchange',
   street: 'Street Token',
   credit: 'Credit Token',
   liquidity: 'Liquidity',
@@ -9,5 +7,7 @@ export default {
   rewards: 'Rewards',
   revenue: 'Revenue Model',
   protection: 'User Protection',
-  testing: 'Testing Coverage'
+  testing: 'Testing Coverage',
+  fuzzing: 'Fuzz Testing',
+  genesis: 'Genesis',
 }

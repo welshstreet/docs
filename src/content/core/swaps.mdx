@@ -13,16 +13,17 @@ The exchange maintains dual reserve pools and implements a **two-tier fee system
 
 ## Core Swap Functions
 
-### swap-a-b: Welsh → Street Token Swap
+### swap-a-b: Welsh → Street Swap
 
 Exchanges Welsh tokens for Street tokens using constant product AMM mechanics with integrated fee distribution.
 
 ```clarity
-;; #[allow(unchecked_data)]
 (define-public (swap-a-b (amount-a uint))
   (let (
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
     (fee-total (/ (* amount-a (+ (var-get fee) (var-get rev))) BASIS))
     (rev-a (/ (* amount-a (var-get rev)) BASIS))
     (fee-a (/ (* amount-a (var-get fee)) BASIS))
@@ -33,21 +34,22 @@ Exchanges Welsh tokens for Street tokens using constant product AMM mechanics wi
     (amount-b-net amount-b)
     (res-a-new (+ res-a amount-a-net))
     (res-b-new (- res-b amount-b-net))
+    (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
+    (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
     (treasury (var-get treasury-address))
   )
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
-      (asserts! (> amount-b-net u0) ERR_ZERO_AMOUNT)
+      (asserts! (> amount-b-net u0) ERR_INVALID_AMOUNT)
       (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .exchange none))
-      (if (> fee-total u0)
-        (begin
-          (try! (transformer .welshcorgicoin rev-a treasury))
-          (try! (transformer .welshcorgicoin fee-a .rewards))
-          (try! (contract-call? .rewards update-rewards-a fee-a))
-          ) true)
+      (try! (transformer .welshcorgicoin rev-a treasury))
+      (try! (transformer .welshcorgicoin fee-a .rewards))
       (try! (transformer .street amount-b-net tx-sender))
+      (try! (contract-call? .rewards update-rewards-a fee-a))
       (var-set reserve-a res-a-new)
       (var-set reserve-b res-b-new)
+      (var-set locked-a lock-a-new)
+      (var-set locked-b lock-b-new)
       (ok {
         amount-in: amount-a,
         amount-out: amount-b-net,
@@ -90,142 +92,6 @@ amount-b = (amount-a-net * res-b) / (res-a + amount-a-net)
 - Output amount must be greater than zero (prevents zero-output swaps)
 - User must have sufficient Welsh token balance
 - Liquidity pool must be initialized
-
-### swap-b-a: Street → Welsh Token Swap
-
-Exchanges Street tokens for Welsh tokens using constant product AMM mechanics with integrated fee distribution.
-
-```clarity
-;; #[allow(unchecked_data)]
-(define-public (swap-b-a (amount-b uint))
-  (let (
-    (res-a (var-get reserve-a))
-    (res-b (var-get reserve-b))
-    (fee-total (/ (* amount-b (+ (var-get fee) (var-get rev))) BASIS))
-    (rev-b (/ (* amount-b (var-get rev)) BASIS))
-    (fee-b (/ (* amount-b (var-get fee)) BASIS))
-    (amount-b-net (- amount-b fee-total))
-    (num (* amount-b-net res-a))
-    (den (+ res-b amount-b-net))
-    (amount-a (/ num den))
-    (amount-a-net amount-a)
-    (res-a-new (- res-a amount-a-net))
-    (res-b-new (+ res-b amount-b-net))
-    (treasury (var-get treasury-address))
-  )
-    (begin
-      (asserts! (> amount-a-net u0) ERR_ZERO_AMOUNT)
-      (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
-      (try! (contract-call? .street transfer amount-b tx-sender .exchange none))
-      (if (> fee-total u0)
-        (begin
-          (try! (transformer .street rev-b treasury))
-          (try! (transformer .street fee-b .rewards))
-          (try! (contract-call? .rewards update-rewards-b fee-b))
-          ) true)
-      (try! (transformer .welshcorgicoin amount-a-net tx-sender))
-      (var-set reserve-a res-a-new)
-      (var-set reserve-b res-b-new)
-      (ok {
-        amount-in: amount-b,
-        amount-out: amount-a-net,
-        fee-b: fee-b,
-        res-a: res-a,
-        res-a-new: res-a-new,
-        res-b: res-b,
-        res-b-new: res-b-new,
-        rev-b: rev-b})
-    )
-  )
-)
-```
-
-**Parameters:**
-- `amount-b`: Amount of Street tokens to swap (in natural units)
-
-**AMM Calculation Formula:**
-The swap uses the constant product formula with fee deduction:
-```
-amount-b-net = amount-b - fee-total
-amount-a = (amount-b-net * res-a) / (res-b + amount-b-net)
-```
-
-**Fee Distribution:**
-- **Fee Component (`fee-b`)**: `(amount-b * fee) / BASIS` → Sent to rewards contract for liquidity providers
-- **Revenue Component (`rev-b`)**: `(amount-b * rev) / BASIS` → Sent to treasury address for protocol growth
-- **Net Input**: `amount-b-net = amount-b - fee-total` → Added to Street reserves
-
-**Returns:**
-- `amount-in`: Input Street token amount
-- `amount-out`: Output Welsh token amount received by user
-- `fee-b`: Street tokens allocated to liquidity provider rewards
-- `res-a`/`res-a-new`: Welsh reserve amounts (before/after swap)
-- `res-b`/`res-b-new`: Street reserve amounts (before/after swap)
-- `rev-b`: Street tokens sent to treasury
-
-**Requirements:**
-- Input amount must be greater than zero
-- Output amount must be greater than zero (prevents zero-output swaps)
-- User must have sufficient Street token balance
-- Liquidity pool must be initialized
-
-## Fee System Parameters
-
-### Fee Rate Configuration
-
-The Welsh Street Exchange implements configurable fee rates with protective bounds to ensure fair pricing and protocol sustainability:
-
-```clarity
-;; Fee and revenue rate bounds (basis points)
-(define-constant BASIS u10000)        ;; 100% = 10,000 basis points
-(define-constant MAX_FEE u200)        ;; Maximum 2.00% fee rate
-(define-constant MAX_REV u200)        ;; Maximum 2.00% revenue rate  
-(define-constant MIN_FEE u50)         ;; Minimum 0.50% fee rate
-(define-constant MIN_REV u50)         ;; Minimum 0.50% revenue rate
-
-;; Current rate variables (default: 1.00% each)
-(define-data-var fee uint u100)       ;; Current fee rate (default: 1.00%)
-(define-data-var rev uint u100)       ;; Current revenue rate (default: 1.00%)
-```
-
-### Fee Parameter Details
-
-#### Fee Component (Liquidity Provider Rewards)
-- **Purpose**: Incentivizes liquidity provision by rewarding LP token holders
-- **Distribution**: Automatically distributed through the rewards contract's zero-debt system
-- **Range**: 0.50% - 2.00% (50 - 200 basis points)
-- **Default**: 1.00% (100 basis points)
-- **Token Flow**: Input tokens → Rewards contract → Distributed proportionally to LP holders
-
-#### Revenue Component (Protocol Treasury)
-- **Purpose**: Funds protocol development, marketing, and ecosystem growth
-- **Distribution**: Sent directly to the configurable treasury address
-- **Range**: 0.50% - 2.00% (50 - 200 basis points)
-- **Default**: 1.00% (100 basis points)
-- **Token Flow**: Input tokens → Treasury address → Protocol development funding
-
-### Total Fee Impact
-
-**Combined Fee Structure:**
-- **Total Swap Cost**: `fee + rev` (default: 2.00%)
-- **Maximum Total**: 4.00% (2% fee + 2% rev)
-- **Minimum Total**: 1.00% (0.5% fee + 0.5% rev)
-- **Basis Point Calculation**: `(amount * rate) / 10000`
-
-**Example Calculations:**
-```clarity
-;; Default rates (1% fee + 1% rev = 2% total)
-Input: 1,000,000 Welsh tokens
-Fee (LP rewards): 1,000,000 * 100 / 10000 = 10,000 Welsh
-Revenue (treasury): 1,000,000 * 100 / 10000 = 10,000 Welsh
-Net for swap: 1,000,000 - 20,000 = 980,000 Welsh
-
-;; Maximum rates (2% fee + 2% rev = 4% total)
-Input: 1,000,000 Welsh tokens
-Fee (LP rewards): 1,000,000 * 200 / 10000 = 20,000 Welsh
-Revenue (treasury): 1,000,000 * 200 / 10000 = 20,000 Welsh
-Net for swap: 1,000,000 - 40,000 = 960,000 Welsh
-```
 
 ## Swap Mechanics
 

@@ -1,10 +1,12 @@
-# The Welsh Street Liquidity Engine
+import { Callout } from 'nextra/components'
+
+# Welsh Street Liquidity Engine
 
 ## Core Liquidity Functions
 
 Welsh Street Exchange implements a unique **five-tier liquidity system** that addresses different needs within the Welsh economy. Understanding the distinctions between these functions is crucial for grasping how the protocol transforms idle WELSH into productive DeFi infrastructure.
 
-## 1. `provide-liquidity` - Standard AMM Behavior ✅
+## `provide-liquidity`
 
 **Purpose**: Normal liquidity provision with LP token issuance
 **Who can use**: Anyone can provide liquidity
@@ -33,13 +35,11 @@ Welsh Street Exchange implements a unique **five-tier liquidity system** that ad
 - **Reward Eligible**: LP holders earn trading fees and emission rewards
 - **Ratio Dependent**: Uses existing **available** liquidity ratio for token-b calculation
 
----
-
-## 2. `lock-liquidity` - Permanent Locking (No LP Tokens) 🔒
+## `lock-liquidity`
 
 **Purpose**: Creates "locked" liquidity that cannot be withdrawn by users
 **Who can use**: Only the contract owner can initialize with locked liquidity
-**Tracking**: Increases `locked-a`, `locked-b`, and `locked-lp` variables
+**Tracking**: Increases `locked-a`, `locked-b` variables
 **Key difference**: This liquidity is permanently locked and generates LP tokens that track the lock
 
 ```clarity
@@ -57,8 +57,6 @@ Welsh Street Exchange implements a unique **five-tier liquidity system** that ad
     ;; Transfers tokens to exchange
     (var-set locked-a (+ (var-get locked-a) amount-a))
     (var-set locked-b (+ (var-get locked-b) amount-b))
-    (var-set locked-lp (+ (var-get locked-lp) amount-lp)) ;; Record tracking metric
-    ;; NO LP tokens minted to user - liquidity becomes protocol-owned
 ```
 
 **Key Features**:
@@ -68,9 +66,7 @@ Welsh Street Exchange implements a unique **five-tier liquidity system** that ad
 - **Protocol-Owned**: Becomes base liquidity that supports all trading operations
 - **LP Tracking**: The `locked-lp` variable records how many LP tokens *would have been minted* but no actual tokens are created
 
----
-
-## 3. `burn-liquidity` - LP Token Burning (Benefits Remaining LPs) 🔥
+## `burn-liquidity`
 
 **Purpose**: Voluntarily burn LP tokens to permanently forfeit liquidity claims
 **Behavior**: Burns LP tokens without affecting locked liquidity counters - benefits all remaining LP holders
@@ -102,9 +98,7 @@ After 100 LP Burn: 900 LP tokens share 100 WELSH + 10,000 STREET
 Result: Each remaining LP token increased in value by ~11%
 ```
 
----
-
-## 4. `remove-liquidity` - Withdraw Position (Subject to Tax) 📤
+## `remove-liquidity`
 
 **Purpose**: Allows users to withdraw their liquidity position at any time
 **Who can use**: Any LP token holder can remove all or part of their position
@@ -143,11 +137,7 @@ Result: Each remaining LP token increased in value by ~11%
 - **Flexible Timing**: Users can withdraw at any time, no lock-up periods
 - **Reward Position Reset**: User's reward tracking is recalculated based on new LP balance
 
-> **⚠️ Important**: Always claim your pending rewards before removing liquidity, as your reward position will be reset based on your new LP token balance.
-
----
-
-## 5. `provide-initial-liquidity` - Admin Initial Setup (Fair Distribution) 🎯
+## `provide-initial-liquidity`
 
 **Purpose**: Allows contract owner to set initial pool ratio based on market conditions at deployment
 **Who can use**: Only contract owner, only when pool is empty
@@ -217,7 +207,7 @@ All liquidity functions that change a user's LP token balance automatically upda
 - ✅ **`burn-liquidity`**: User loses LP tokens → reward rate decreases
 - ❌ **`lock-liquidity`**: No LP tokens created → no reward impact
 
-> **⚠️ Critical Warning**: Always claim your pending rewards before changing your LP position (provide, remove, or burn). The `update-user-rewards` call will reset your reward tracking based on your new LP balance, potentially causing you to lose unclaimed rewards.
+<Callout type="warning">Always claim your pending rewards before removing liquidity, as your reward position will be reset based on your new LP token balance.</Callout>
 
 **Reward Claiming Workflow**:
 1. **Check pending rewards**: Use `get-reward-user-info` to see unclaimed amounts
@@ -281,7 +271,7 @@ Let's trace through a complete scenario:
 
 ## Critical Distinctions
 
-### `lock-liquidity` vs `burn-liquidity` - Different Purposes
+### `lock` vs `burn`
 
 | Aspect | `lock-liquidity` | `burn-liquidity` |
 |--------|------------------|------------------|
@@ -292,7 +282,7 @@ Let's trace through a complete scenario:
 | **Tracking** | Counted as "locked" | Not counted as "locked" |
 | **Withdrawal Tax Effect** | Tax increases locked amounts | Tax doesn't affect burned tokens |
 
-### `provide-liquidity` vs `provide-initial-liquidity` - Setup vs Operation
+### `provide` vs `provide-initial`
 
 | Aspect | `provide-liquidity` | `provide-initial-liquidity` |
 |--------|---------------------|---------------------------|
@@ -320,19 +310,6 @@ Let's trace through a complete scenario:
 6. **Fair initial distribution** prevents first-mover advantage in LP token allocation
 7. **Flexible deployment** adapts to market conditions at launch
 
-## Fee Structure & Revenue Model
-
-## Parameter Limits (Security Features)
-```clarity
-(define-constant MAX_FEE u500)    ;; 5% maximum swap fees
-(define-constant MAX_REV u500)    ;; 5% maximum revenue extraction
-(define-constant MAX_TAX u2000)   ;; 20% maximum withdrawal tax
-```
-
-## Revenue Distribution
-- **Swap Fees**: Go to rewards contract for LP holder distribution
-- **Revenue Extraction**: Goes to protocol deployer (capped at 5%)
-- **Withdrawal Tax**: Becomes permanently locked liquidity
 
 ## Strategic Deployment Flow: From Idle WELSH to Active Economy
 
@@ -341,5 +318,3 @@ Let's trace through a complete scenario:
 3. **Community Commitment**: Contract owner gradually calls `burn-liquidity` to sacrifice their outsized LP share, proving dedication to community benefit
 4. **Flywheel Engagement**: WELSH holders call `provide-liquidity` to transform their idle assets into yield-generating CREDIT tokens with STREET emission rewards
 5. **Sustainable Growth**: Withdrawal taxes continuously expand the locked base while LP burning increases reward share for community
-
-This five-tier system **directly addresses each phase of the Welsh Economic Flywheel**, transforming WELSH from a static community token into the foundation of a dynamic, self-sustaining DeFi economy while ensuring mathematical fairness and community benefit alignment through the innovative initial distribution mechanism.
