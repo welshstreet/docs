@@ -40,7 +40,7 @@ export default async function RootLayout({ children }) {
         <Layout
           // banner={<Banner storageKey="exchangeBanner">The Exchange is Live</Banner>}
           copyPageButton={false}
-          docsRepositoryBase="https://github.com/enjoywithouthey/welsh-street-docs/tree/main"
+          docsRepositoryBase="https://github.com/welshstreet/docs/tree/main"
           editLink="View on GitHub"
           feedback={{ content:"Contribute" }}
           footer={<Footer className="custom-footer">
