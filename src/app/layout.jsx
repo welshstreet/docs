@@ -26,7 +26,7 @@ export default async function RootLayout({ children }) {
           <span style={{ opacity: '60%' }}>Street</span>
         </div>
       }
-      logoLink="https://www.welshstreet.com/"  // Custom logo link
+      logoLink="https://docs.welshstreet.com/"  // Custom logo link
       // chatLink="https://discord.gg/zWzvtVrPeJ"
       chatLink={false} 
       projectLink={false}  // Hide project link

@@ -6,6 +6,7 @@
     "dev": "next dev",
     "dev-turbo": "next dev --turbopack",
     "build": "next build --turbopack",
+    "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "pagefind": "^1.1.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
