@@ -26,8 +26,10 @@ export default async function RootLayout({ children }) {
           <span style={{ opacity: '60%' }}>Street</span>
         </div>
       }
-      logoLink="/"  // Custom logo link
-      chatLink="https://discord.gg/zWzvtVrPeJ"
+      logoLink="https://www.welshstreet.com/"  // Custom logo link
+      // chatLink="https://discord.gg/zWzvtVrPeJ"
+      chatLink={false} 
+      projectLink={false}  // Hide project link
     />
   )
   const pageMap = await getPageMap()
