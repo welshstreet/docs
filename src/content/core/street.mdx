@@ -50,11 +50,15 @@ The Street token pays homage to Bitcoin via it's emission schedule. Street token
 )
 ```
 
-The limitation or lack of internal triggers is by design. Stacks smart contracts (written in Clarity) only execute when explicitly called by a transaction that is included in Stacks block (anchored to Bitcoin) Stacks has not timers, daemons, background process, emitters, or schedulers that can call a function because it's consensus is programmatically linked to Bitcoin. This in-part is what makes Stacks so incredibly secure.
+## Street Emissions
 
-Therefore to trigger `emission-mint` contract calls, Welsh Street user Hiro chainhooks. Chainhooks are an automation framework built specifically for Bitcoin and Stacks for this purpose!  Created by Hiro Systems, chainhooks are off-chain event-driven indexers that listen for specific events and execute contract calls when the conditions are met.
+The limitation or lack of internal triggers is by design. Stacks smart contracts (written in Clarity) only execute when explicitly called by a transaction that is included in Stacks block (anchored to Bitcoin) Stacks has no timers, daemons, background process, emitters, or schedulers that can call a function because it's consensus is programmatically linked to Bitcoin. This in-part is what makes Stacks so incredibly secure.
 
-Every bitcoin block, a Hiro chainhook executes the emission-mint function which mints 10,000 new Street directly to the rewards contract.  This chainhook execution is throttled by bitcoin blocks.  There is another governor in the contract logic that only allows one Street mint event to occur every Bitcoin block.
+### Chainhooks
+
+To trigger `emission-mint` contract calls, Welsh Street user Hiro chainhooks. Chainhooks are an automation framework built specifically for Bitcoin and Stacks for this purpose!  Created by Hiro Systems, chainhooks are off-chain event-driven indexers that listen for specific events and execute contract calls when the conditions are met.
+
+Every Bitcoin block, a Hiro chainhook executes the emission-mint function which mints 10,000 new Street directly to the rewards contract.  This chainhook execution is throttled by Bitcoin blocks.  There is contract logic that only allows one Street mint event to occur every Bitcoin block.
 
 ### Emission Security Features
 - ✅ **Emission amount hardcoded** - Admin cannot change 10,000 token rate
