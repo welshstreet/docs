@@ -245,3 +245,69 @@ a:hover, .footer-link:hover {
     width: 200px;
   }
 }
+
+/* ============================================================================
+    BANNER
+   ============================================================================ */
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.banner-outer {
+  background: linear-gradient(90deg, 
+    var(--orange) 0%, 
+    var(--blue) 33%, 
+    var(--purple) 67%, 
+    var(--orange) 100%
+  );
+  background-size: 400% 100%;
+  animation: gradientShift 5s ease-in-out infinite;
+  position: relative;
+  z-index: 20;
+}
+
+.banner-inner {
+  position: relative;
+  z-index: 50;
+}
+
+.banner-inner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    var(--orange) 0%, 
+    var(--blue) 25%, 
+    var(--purple) 50%, 
+    var(--red) 75%, 
+    var(--orange) 100%
+  );
+  background-size: 400% 100%;
+  animation: gradientShift 3s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  z-index: -1;
+}
+
+.banner-outer:hover .banner-inner::before {
+  opacity: 1;
+}
+
+.banner-inner div {
+  transition: color 1s ease-in-out;
+  position: relative;
+  z-index: 10;
+}
+
+.banner-outer:hover .banner-inner div {
+  color: black !important;
+}

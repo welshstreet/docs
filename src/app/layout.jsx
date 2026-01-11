@@ -38,7 +38,15 @@ export default async function RootLayout({ children }) {
       <Head faviconGlyph="✦" />
       <body>
         <Layout
-          // banner={<Banner storageKey="exchangeBanner">The Exchange is Live</Banner>}
+          banner={
+            <Banner storageKey="genesisEventBanner" className="banner-outer">
+              <div className="banner-inner">
+                <a href="https://events.welshstreet.com/genesis" target="_blank" rel="noopener">
+                  🔥 Genesis is Live - Contribute to the LGE Now 🔥
+                </a>
+              </div>
+            </Banner>
+          }
           copyPageButton={false}
           docsRepositoryBase="https://github.com/welshstreet/docs/tree/main"
           editLink="View on GitHub"
