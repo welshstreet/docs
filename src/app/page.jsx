@@ -25,7 +25,7 @@ export default function IndexPage() {
 					Home
 				</a>
 				<a 
-					href="https://app.welshstreet.com/" 
+					href="https://app.welshtest.net/" 
 					target="_blank" 
 					rel="noopener noreferrer"
 					className="btn btn-primary btn-exchange"
