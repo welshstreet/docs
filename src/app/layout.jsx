@@ -41,7 +41,7 @@ export default async function RootLayout({ children }) {
           banner={
             <Banner storageKey="genesisEventBanner" className="banner-outer">
               <div className="banner-inner">
-                <a href="https://events.welshstreet.com/genesis" target="_blank" rel="noopener">
+                <a href="https://events.welshtest.net/genesis" target="_blank" rel="noopener">
                   🔥 Genesis is Live - Contribute to the LGE Now 🔥
                 </a>
               </div>
