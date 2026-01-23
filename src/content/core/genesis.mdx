@@ -196,7 +196,7 @@ Toggles the claim phase on/off. Only callable by the contract owner.
 Internal function used to transfer STREET tokens to users during the claim process.
 
 ```clarity
-(define-public (transformer
+(define-private (transformer
     (token <sip-010>)
     (amount uint)
     (recipient principal)
