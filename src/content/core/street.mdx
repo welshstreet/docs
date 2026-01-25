@@ -2,49 +2,43 @@
 
 ## Overview
 
-The STREET token is the world's **first dedicated meme rewards token** - a SIP-010 fungible token created specifically to honor and reward **WELSH liquidity providers** on Welsh Street Exchange. Born from the recognition that WELSH—Bitcoin's first memecoin and Stacks' official mascot—deserved a sophisticated yield-generating companion, STREET exists purely to incentivize and reward liquidity provision for the WELSH/STREET pair.
+The STREET token is the world's first dedicated meme rewards token - a SIP-010 fungible token created specifically to honor and reward WELSH liquidity providers on Welsh Street Exchange. Born from the recognition that WELSH—Bitcoin's first memecoin and Stacks' official mascot—deserved a sophisticated yield-generating companion, STREET exists purely to incentivize and reward liquidity provision for the WELSH/STREET pair.
 
-Unlike traditional meme coins focused on speculation, STREET represents a **paradigm shift toward utility-driven tokenomics**, creating sustainable yield for those who provide liquidity to Bitcoin's most beloved memecoin.
+Unlike traditional meme coins focused on speculation, STREET represents a paradigm shift toward utility-driven tokenomics, creating sustainable yield for those who provide liquidity to Bitcoin's most beloved memecoin.
 
 ## Meme Rewards: Solving the Community Token Problem
 
-STREET directly addresses the **core economic challenge** identified in WELSH's perfectly distributed but idle token supply. By introducing a groundbreaking approach to meme coin economics that **makes liquidity provision the primary utility**, STREET creates the missing economic engine that transforms idle WELSH holdings into productive yield-generating assets.
+STREET directly addresses the core economic challenge identified in WELSH's perfectly distributed but idle token supply. By introducing a groundbreaking approach to meme coin economics that makes liquidity provision the primary utility, STREET creates the missing economic engine that transforms idle WELSH holdings into productive yield-generating assets.
 
-Instead of relying on speculation or ecosystem adoption, STREET's entire purpose is **solving the community coin utility gap** by generating sustainable yield for those who provide liquidity to the Welsh Street Exchange.
+Instead of relying on speculation or ecosystem adoption, STREET's entire purpose is solving the community coin utility gap by generating sustainable yield for those who provide liquidity to the Welsh Street Exchange.
 
-**Key Innovation**: The first meme coin where **holding LP tokens > holding the token itself** - directly solving WELSH's idle asset problem
+Key Innovation: The first meme coin where holding LP tokens > holding the token itself - directly solving WELSH's idle asset problem
 
-## Bitcoin & DOGE Inspired Emission Schedule
+## Bitcoin-Based Emission Architecture
 
-STREET pays homage to Bitcoin and DOGE through its hybrid emission mechanics - **10,000 tokens minted every Bitcoin block**.
+The protocol's emission mechanism links directly to Bitcoin's blockchain, with each new block triggering reward distribution. This eliminates reliance on centralized schedulers or oracles, ensuring manipulation-resistant timing.
 
-### Why DOGE?
-
-Because well, Welsh is a corgi after all. The 10,000 figure comes from DOGE. The DOGE contract rewards DOGE miners 10,000 DOGE every block with a block arriving approximately every minute.
-
-```python
-return max(subsidy * coin >> height//100000, 10000 * coin) # DOGE minimum subsidy
-```
-
-DOGE blocks are mined every minute in perpetuity giving DOGE and infinite supply.  This may seem like a poor tokenomics choice for a layer-1 or global currency reserve, especially according to Bitcoiners, but what about a rewards token? Wouldn't it be nice to receive token rewards, forever? Especially if the tribute token, WELSH, has a fixed supply?  This thought experiment gave birth to the Kill Switch design decision which you can read about here.  Regardless, DOGE is the king of the dog memes until it gets flipped by Welsh, so in all due respect, the 10,000 Street token emission pays it's respects to the king (for now).
+Bitcoin's consistent 10-minute block production provides predictable frequency for reward distribution, maintained reliably over a decade of operation. This synchronization with the world's most secure blockchain creates natural alignment with cryptocurrency infrastructure while allowing transparent verification through Bitcoin block explorers.
 
 ### Why Bitcoin?
 
-Welsh is Bitcoin's first Dog Meme.  Don't trust, verify. You can check the chain here. [link to Welsh Mint]() When know there's plenty of other dog coins claiming to be Bitcoin's first, but that's the reason we have blockchain data.  WELSH's contract was deployed in XX/XXXX on the Stacks Blockchain.  Stacks transactions settle as blocks on Bitcoin.  So to answer your question, yes, Welsh was the first dog token written to Bitcoin. 😁
+Welsh is Bitcoin's first Dog Meme.  Don't trust, verify. You can check the chain here. [link to Welsh Mint]() When know there's plenty of other dog coins claiming to be Bitcoin's first, but that's the reason we have blockchain data.  WELSH's contract was deployed in XX/XXXX on the Stacks Blockchain.  Stacks transactions settle as blocks on Bitcoin.  So to answer your question, yes, Welsh was the first dog token written to Bitcoin.
 
 The Street token pays homage to Bitcoin via it's emission schedule. Street token emissions are throttled by Bitcoin blocks.  Only one Street mint function can be called every bitcoin block.
 
 ```clarity
 ;; FIXED EMISSION PARAMETERS (IMMUTABLE) CANNOT BE CHANGED BY ADMIN
-(define-constant EMISSION_AMOUNT u10000000000) ;; 10,000 tokens per emission
-(define-constant EMISSION_INTERVAL u1) ;; Only once per block
+;; emission schedule constants
+(define-constant EMISSION_INTERVAL u1)
+(define-constant EPOCHS_PER_CYCLE u2)
+(define-constant INFLATION_SCHEDULE (list u2100 u1600 u1111 u690 u420))
+(define-constant DEFAULT_INFLATION_RATE u210)
 
 (define-public (emission-mint)
   (let (
     (current-block burn-block-height) ;; Bitcoin block height
   )
     (asserts! (not (is-eq current-block last-mint)) ERR_EMISSION_INTERVAL) ;; block check
-    (try! (ft-mint? street EMISSION_AMOUNT .rewards)) ;; mints to rewards pool
     (var-set last-mint-block current-block) ;; limited to 1 emission per Bitcoin block
   )
 )
@@ -61,10 +55,10 @@ To trigger `emission-mint` contract calls, Welsh Street user Hiro chainhooks. Ch
 Every Bitcoin block, a Hiro chainhook executes the emission-mint function which mints 10,000 new Street directly to the rewards contract.  This chainhook execution is throttled by Bitcoin blocks.  There is contract logic that only allows one Street mint event to occur every Bitcoin block.
 
 ### Emission Security Features
-- ✅ **Emission amount hardcoded** - Admin cannot change 10,000 token rate
-- ✅ **Bitcoin block timing** - Aligned with Bitcoin's ~10 minute blocks
-- ✅ **Rate limited** - Maximum 1 emission per block prevents spam
-- ✅ **Direct to rewards** - Tokens mint directly to LP reward pool
+- Emission schedule  hardcoded - Admin cannot change the inflation rate
+- Bitcoin block timing - Aligned with Bitcoin's ~10 minute blocks
+- Rate limited - Maximum 1 emission per block prevents spam
+- Direct to rewards - Tokens mint directly to LP reward pool
 
 ### What's the worse that can happen?
 - Chainhooks are off-chain infrastructure which can have down time.  In this case, a mint block maybe skipped, which just slows Street's emission schedule.
@@ -78,29 +72,28 @@ Every Bitcoin block, a Hiro chainhook executes the emission-mint function which 
 - ✅ `street-mint` - Initial distribution (capped at 5B total)
 
 ### Immutable Parameters
-- 🔒 Emission amount (10,000 tokens) cannot be changed
-- 🔒 Emission interval (1 block) cannot be changed
-- 🔒 Kill switch is irreversible once activated
-- 🔒 Street mint cap (5B) cannot be exceeded
+- Emission interval (1 block) cannot be changed
+- Kill switch is irreversible once activated
+- Street mint cap (5B) cannot be exceeded
 
 ### Token Metadata
-- **Token Standard**: SIP-010 Fungible Token
-- **Decimals**: 6 (micro-precision for fair distribution)
-- **Symbol**: STREET
-- **Total Supply**: 10 billion or infinite see [Kill Switch](/docs/tokenomics#the-kill-switch-decision)
-- **Emission Target**: Rewards contract for LP distribution
-- **Emission Trigger**: Hiro Chainhook
-- **Emission Timing**: Bitcoin blocks `burn-block-height` (~10 minute average)
-- **Contract Link**:
+- Token Standard: SIP-010 Fungible Token
+- Decimals: 6 (micro-precision for fair distribution)
+- Symbol: STREET
+- Total Supply: 10 billion or infinite see [Kill Switch](/docs/tokenomics#the-kill-switch-decision)
+- Emission Target: Rewards contract for LP distribution
+- Emission Trigger: Hiro Chainhook
+- Emission Timing: Bitcoin blocks `burn-block-height` (~10 minute average)
+- Contract Link:
 
 ## The Welsh Street Vision
 
-STREET represents a paradigm shift in meme coin economics - from speculation-driven to **utility-driven tokenomics**. By making liquidity provision the core value proposition, STREET creates:
+STREET represents a paradigm shift in meme coin economics - from speculation-driven to utility-driven tokenomics. By making liquidity provision the core value proposition, STREET creates:
 
-1. **Sustainable Yield** - Real returns for real utility
-2. **Protocol-Owned Liquidity** - Permanent trading depth
-3. **Community Governance** - Democratic control over monetary policy
-4. **Bitcoin Alignment** - Honoring the original blockchain's timing
-5. **Meme Innovation** - Proving meme coins can have serious utility
+1. Sustainable Yield - Real returns for real utility
+2. Protocol-Owned Liquidity - Permanent trading depth
+3. Community Governance - Democratic control over monetary policy
+4. Bitcoin Alignment - Honoring the original blockchain's timing
+5. Meme Innovation - Proving meme coins can have serious utility
 
-STREET isn't just another meme coin - it's the **economic engine that transforms idle WELSH into productive DeFi infrastructure**, directly solving the community coin utility problem that has limited WELSH's growth potential for three years.
+STREET isn't just another meme coin - it's the economic engine that transforms idle WELSH into productive DeFi infrastructure, directly solving the community coin utility problem that has limited WELSH's growth potential for three years.
