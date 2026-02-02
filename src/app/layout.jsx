@@ -36,7 +36,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning className="dark">
       <Head faviconGlyph="✦" />
-      <body>
+      <body suppressHydrationWarning={true}>
         <Layout
           banner={
             <Banner storageKey="genesisEventBanner" className="banner-outer">
