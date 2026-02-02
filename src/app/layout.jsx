@@ -34,7 +34,7 @@ export default async function RootLayout({ children }) {
   )
   const pageMap = await getPageMap()
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning className="dark">
       <Head faviconGlyph="✦" />
       <body>
         <Layout
@@ -58,6 +58,11 @@ export default async function RootLayout({ children }) {
           pageMap={pageMap}
           sidebar={{ defaultMenuCollapseLevel: 1 }}
           darkMode={false}
+          nextThemes={{
+            defaultTheme: 'dark',
+            forcedTheme: 'dark',
+            storageKey: 'theme'
+          }}
         >
           {children}
         </Layout>

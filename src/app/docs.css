@@ -6,6 +6,21 @@
   --purple: #c084fc;
 }
 
+/* Force dark mode always */
+html {
+  color-scheme: dark !important;
+}
+
+/* Override any light mode styles */
+html[class*="light"],
+html[data-theme="light"],
+body[class*="light"],
+body[data-theme="light"] {
+  color-scheme: dark !important;
+  background: transparent !important;
+  color: white !important;
+}
+
 body, html {
   margin: 0;
   padding: 0;
