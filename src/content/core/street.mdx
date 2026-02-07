@@ -1,54 +1,6 @@
 # Street Token
 
-## Overview
-
-The STREET token is the world's **first dedicated meme rewards token** - a SIP-010 fungible token created specifically to honor and reward **WELSH liquidity providers** on Welsh Street Exchange. Born from the recognition that WELSH—Bitcoin's first memecoin and Stacks' official mascot—deserved a sophisticated yield-generating companion, STREET exists purely to incentivize and reward liquidity provision for the WELSH/STREET pair.
-
-Unlike traditional meme coins focused on speculation, STREET represents a **paradigm shift toward utility-driven tokenomics**, creating sustainable yield for those who provide liquidity to Bitcoin's most beloved memecoin.
-
-## Meme Rewards: Solving the Community Token Problem
-
-STREET directly addresses the **core economic challenge** identified in WELSH's perfectly distributed but idle token supply. By introducing a groundbreaking approach to meme coin economics that **makes liquidity provision the primary utility**, STREET creates the missing economic engine that transforms idle WELSH holdings into productive yield-generating assets.
-
-Instead of relying on speculation or ecosystem adoption, STREET's entire purpose is **solving the community coin utility gap** by generating sustainable yield for those who provide liquidity to the Welsh Street Exchange.
-
-**Key Innovation**: The first meme coin where **holding LP tokens > holding the token itself** - directly solving WELSH's idle asset problem
-
-## Emission Schedule
-
-**STREET's** emission schedule draw inspiration from the King of Crypto: Bitcoin and the (soon to be de-throned) King of Memes: **DOGE**.
-
-### DOGE-inspired Emission
-
-STREET pays homage to Bitcoin and DOGE through its hybrid emission mechanics - **10,000 tokens minted every Bitcoin block**. Because well, Welsh is a corgi after all. The 10,000 figure comes from DOGE. The DOGE contract rewards DOGE miners 10,000 DOGE every block with a block arriving approximately every minute.
-
-```python
-return max(subsidy * coin >> height//100000, 10000 * coin) # DOGE minimum subsidy
-```
-
-DOGE blocks are mined every minute in perpetuity giving DOGE and infinite supply.  This may seem like a poor tokenomics choice for a layer-1 or global currency reserve, especially according to Bitcoiners, but what about a rewards token? Wouldn't it be nice to receive token rewards, forever? Especially if the tribute token, WELSH, has a fixed supply?  This thought experiment gave birth to the Kill Switch design decision which you can read about here.  Regardless, DOGE is the king of the dog memes until it gets flipped by Welsh, so in all due respect, the 10,000 Street token emission pays it's respects to the king (for now).
-
-### Bitcoin-inspired Schedule
-
-Welsh is Bitcoin's first Dog Meme.  Don't trust, verify. You can check the chain here. [link to Welsh Mint]() When know there's plenty of other dog coins claiming to be Bitcoin's first, but that's the reason we have blockchain data.  WELSH's contract was deployed in XX/XXXX on the Stacks Blockchain.  Stacks transactions settle as blocks on Bitcoin.  So to answer your question, yes, Welsh was the first dog token written to Bitcoin. 😁
-
-The Street token pays homage to Bitcoin via it's emission schedule. Street token emissions are throttled by Bitcoin blocks.  Only one Street mint function can be called every bitcoin block.
-
-```clarity
-;; FIXED EMISSION PARAMETERS (IMMUTABLE) CANNOT BE CHANGED BY ADMIN
-(define-constant EMISSION_AMOUNT u5000000000) ;; 10,000 tokens per emission
-(define-constant EMISSION_INTERVAL u1) ;; Only once per block
-
-(define-public (emission-mint)
-  (let (
-    (current-block burn-block-height) ;; Bitcoin block height
-  )
-    (asserts! (not (is-eq current-block last-mint)) ERR_EMISSION_INTERVAL) ;; block check
-    (try! (ft-mint? street EMISSION_AMOUNT .rewards)) ;; mints to rewards pool
-    (var-set last-mint-block current-block) ;; limited to 1 emission per Bitcoin block
-  )
-)
-```
+STREET is the rewards token of the Welsh Street exchange.  This page describes the technical implementation of STREET and describes various unique code blocks and functions not found in typical SIP-010 standard tokens.  For emissions and a description of STREET's tokenomics please visit the [Tokenomics](https://docs.welshstreet.com/docs/tokenomics) section.
 
 ## Emission Triggers
 
@@ -78,10 +30,10 @@ Every Bitcoin block, a Hiro chainhook executes the emission-mint function which 
 - ✅ `street-mint` - Initial distribution (capped at 5B total)
 
 ### Immutable Parameters
-- 🔒 Emission amount (10,000 tokens) cannot be changed
-- 🔒 Emission interval (1 block) cannot be changed
-- 🔒 Kill switch is irreversible once activated
-- 🔒 Street mint cap (5B) cannot be exceeded
+- Emission amount (10,000 tokens) cannot be changed
+- Emission interval (1 block) cannot be changed
+- Kill switch is irreversible once activated
+- Street mint cap (5B) cannot be exceeded
 
 ### Token Metadata
 - **Token Standard**: SIP-010 Fungible Token
