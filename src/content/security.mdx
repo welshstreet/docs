@@ -2,19 +2,19 @@
 
 **Audit Date:** February 6, 2026  
 **Auditor:** GitHub Copilot with Claude Sonnet 4.5  
-**Scope:** All contracts in the Welsh Street ecosystem  
+**Scope:** All contracts in the WELSH STREET ecosystem  
 **Network:** Mainnet deployment preparation  
 
 ## Executive Summary
 
-The Welsh Street Exchange was performed by Claude Sonnet 4
+The WELSH STREET Exchange was performed by Claude Sonnet 4
 .5 after comprehensive unit testing, fuzz testing and manual testing. The AI audit identified **1 Medium severity** and **4 Low/Informational** findings across five core contracts, with all findings representing design enhancements rather than critical vulnerabilities.
 
 ## Compliance & Standards
 
 ### SIP-010 Compliance
 
-- Both `street-token.clar` and `credit-token.clar` properly implement SIP-010
+- Both `STREET-token.clar` and `CREDIT-token.clar` properly implement SIP-010
 - Standard metadata and transfer functions
 - Appropriate balance and supply tracking
 
@@ -64,22 +64,22 @@ Our comprehensive security review covers five critical areas:
 ## Audit Scope
 
 ### Contracts Analyzed
-1. **`street-token.clar`** - Native token with emission mechanics
-2. **`street-market.clar`** - Main DEX contract with AMM functionality
-3. **`street-rewards.clar`** - LP reward distribution system
-4. **`credit-token.clar`** - LP token contract implementing SIP-010
-5. **`credit-controller.clar`** - Transfer controller that facilitates credit-token transfers and reward updates
+1. **`STREET-token.clar`** - Native token with emission mechanics
+2. **`STREET-market.clar`** - Main DEX contract with AMM functionality
+3. **`STREET-rewards.clar`** - LP reward distribution system
+4. **`CREDIT-token.clar`** - LP token contract implementing SIP-010
+5. **`CREDIT-controller.clar`** - Transfer controller that facilitates CREDIT-token transfers and reward updates
 6. **`genesis.clar`** - Liquidity Generation Event contract
-7. **`faucet.clar`** - Testnet faucet for distributing welshcorgicoin to beta testers
+7. **`faucet.clar`** - Testnet faucet for distributing WELSHcorgicoin to beta testers
 
 ### Excluded from Scope
-- **`welshcorgicoin.clar`** - Pre-existing mainnet contract (battle-tested, cannot be modified)
+- **`WELSHcorgicoin.clar`** - Pre-existing mainnet contract (battle-tested, cannot be modified)
 
 ## Medium Severity Findings
 
 ### [M-01] Parameter Front-Running in Updates
 
-**Contract:** `street-market.clar` | **Risk Level:** Medium | **Likelihood:** Low
+**Contract:** `STREET-market.clar` | **Risk Level:** Medium | **Likelihood:** Low
 
 **Description:**
 Parameter front-running occurs when malicious actors observe pending parameter change transactions (fee, tax, or revenue updates) in the mempool and execute trades before the changes take effect to extract MEV (Maximal Extractable Value).
@@ -106,7 +106,7 @@ Parameter front-running occurs when malicious actors observe pending parameter c
 ## Low Severity & Design-Mitigated Findings
 
 ### [L-01] Division by Zero in AMM Calculations (Risk Mitigated)
-**Contract:** `street-market.clar` | **Risk Level:** Low | **Impact:** Mitigated by Design
+**Contract:** `STREET-market.clar` | **Risk Level:** Low | **Impact:** Mitigated by Design
 
 **Analysis:** Theoretical division by zero in swap calculations is mitigated by:
 - **Clarity Runtime Protection:** Graceful error handling with standard error codes
@@ -183,7 +183,7 @@ Parameter front-running occurs when malicious actors observe pending parameter c
 
 ## Conclusion
 
-The Welsh Street Exchange, including all core contracts and new features, demonstrates exceptional security foundations with comprehensive testing and innovative design choices. The **1 Medium severity finding** represents an enhancement opportunity rather than a critical security flaw.
+The WELSH STREET Exchange, including all core contracts and new features, demonstrates exceptional security foundations with comprehensive testing and innovative design choices. The **1 Medium severity finding** represents an enhancement opportunity rather than a critical security flaw.
 
 The protocol showcases several  DeFi innovations:
 - **Community Reward Enhancement:** Donation, burn liquidity and lock liquidity mechanisms allowing community members to directly enhance protocol liquidity and rewards
@@ -202,7 +202,7 @@ The protocol showcases several  DeFi innovations:
 
 ## Appendix: Contract Function Analysis
 
-### Credit Controller Contract (`credit-controller.clar`)
+### CREDIT Controller Contract (`CREDIT-controller.clar`)
 
 | Function | Type | Parameters | Security Audit Status |
 |----------|------|------------|----------------------|
@@ -210,7 +210,7 @@ The protocol showcases several  DeFi innovations:
 | `set-contract-owner` | Public | `new-owner` | ✅ **SECURE** |
 | `get-contract-owner` | Read-only | None | ✅ **SECURE** |
 
-### Credit Token Contract (`credit-token.clar`)
+### CREDIT Token Contract (`CREDIT-token.clar`)
 
 | Function | Type | Parameters | Security Audit Status |
 |----------|------|------------|----------------------|
@@ -261,7 +261,7 @@ The protocol showcases several  DeFi innovations:
 | `get-total-contribution` | Read-only | None | ✅ **SECURE** |
 | `get-user-balance` | Read-only | `address` | ✅ **SECURE** |
 
-### Street Market Contract (`street-market.clar`)
+### STREET Market Contract (`STREET-market.clar`)
 
 | Function | Type | Parameters | Security Audit Status |
 |----------|------|------------|----------------------|
@@ -285,7 +285,7 @@ The protocol showcases several  DeFi innovations:
 | `get-treasury-address` | Read-only | None | ✅ **SECURE** |
 | `get-treasury-locked` | Read-only | None | ✅ **SECURE** |
 
-### Street Rewards Contract (`street-rewards.clar`)
+### STREET Rewards Contract (`STREET-rewards.clar`)
 
 | Function | Type | Parameters | Security Audit Status |
 |----------|------|------------|----------------------|
@@ -305,7 +305,7 @@ The protocol showcases several  DeFi innovations:
 | `get-reward-pool-info` | Read-only | None | ✅ **SECURE** |
 | `get-reward-user-info` | Read-only | `user` | ✅ **SECURE** |
 
-### Street Token Contract (`street-token.clar`)
+### STREET Token Contract (`STREET-token.clar`)
 
 | Function | Type | Parameters | Security Audit Status |
 |----------|------|------------|----------------------|
@@ -316,7 +316,7 @@ The protocol showcases several  DeFi innovations:
 | `set-emission-controller` | Public | `new-controller` | ✅ **SECURE** |
 | `set-kill-switch` | Public | None | ✅ **SECURE** |
 | `set-token-uri` | Public | `value` | ✅ **SECURE** |
-| `street-mint` | Public | `amount` | ✅ **SECURE** |
+| `STREET-mint` | Public | `amount` | ✅ **SECURE** |
 | `transfer` | Public | `amount`, `sender`, `recipient`, `memo` | ✅ **SECURE** |
 | `get-capital-address` | Read-only | None | ✅ **SECURE** |
 | `get-capital-rate` | Read-only | None | ✅ **SECURE** |
@@ -325,7 +325,7 @@ The protocol showcases several  DeFi innovations:
 | `get-emission-controller` | Read-only | None | ✅ **SECURE** |
 | `get-kill-switch` | Read-only | None | ✅ **SECURE** |
 | `get-last-mint-block` | Read-only | None | ✅ **SECURE** |
-| `get-street-minted` | Read-only | None | ✅ **SECURE** |
+| `get-STREET-minted` | Read-only | None | ✅ **SECURE** |
 | `get-balance` | Read-only | `who` | ✅ **SECURE** |
 | `get-decimals` | Read-only | None | ✅ **SECURE** |
 | `get-name` | Read-only | None | ✅ **SECURE** |

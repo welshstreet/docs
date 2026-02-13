@@ -40,7 +40,8 @@ export default function IndexPage() {
 				</a>
 			</div>
 			<div className="description">
-				Welsh Street is the world's first dedicated Meme Rewards project dedicated to Welsh, the first dog coin built on Bitcoin. The Welsh Street Decentralized Exchange is an automated market maker (AMM) designed to the activate and grow the Welsh community and economy. This comprehensive documentation covers the design, architecture, contracts, tokenomics, and terms of service for the decentralized application.
+				Welsh Street is the world's first decentralized exchange dedicated to a single token WELSH, the first dog coin built on Bitcoin.
+				This documentation covers the design, architecture, contracts, tokenomics, and terms of service for the project.
 			</div>
 		</div>
 	)

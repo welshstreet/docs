@@ -91,13 +91,13 @@ a {
   max-width: 1280px;
   margin: auto;
   padding: 2rem;
-  text-align: center;
+
   position: relative;
 }
 
 .main-title {
   text-align: center;
-  font-size: 4rem;
+  font-size: 5rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
   line-height: 1.1;
@@ -105,11 +105,17 @@ a {
 
 .subtitle {
   text-align: center;
-  font-size: 3.5rem;
+  font-size: 4rem;
   font-weight: bold;
   color: gray;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
   line-height: 1.1;
+}
+
+.description {
+  font-size: 1.25rem !important;
+  max-width: 540px !important;
+  /* line-height: 1.25 !important; */
 }
 
 .centered-image {
@@ -124,9 +130,9 @@ a {
   display: flex;
   flex-direction: row;
   gap: 1.5rem; 
-  margin: 2rem 0;
   justify-content: center;
   align-items: center;
+  margin-bottom: 3rem;
 }
 
 /* Base button styling */

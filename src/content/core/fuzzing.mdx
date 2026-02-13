@@ -2,7 +2,7 @@
 
 ## Overview
 
-This documentation covers the fuzzing test suite for the Welsh Street Exchange. The test suite validates the integrity, security, and correctness of all five core smart contracts through extensive property-based testing and invariant testing using Rendezvous (`rv`), the Clarity fuzzer. Extended validation with 1,000 runs was implemented for each test type to ensure comprehensive coverage.
+This documentation covers the fuzzing test suite for the WELSH STREET Exchange. The test suite validates the integrity, security, and correctness of all five core smart contracts through extensive property-based testing and invariant testing using Rendezvous (`rv`), the Clarity fuzzer. Extended validation with 1,000 runs was implemented for each test type to ensure comprehensive coverage.
 
 ## Testing Methodologies
 
@@ -23,16 +23,16 @@ Purpose: AMM constant product mechanics with fee system fuzzing
 - Property Tests: Parameter validation, liquidity operations, swap mechanics, slippage protection
 - Result: AMM mechanics and fee calculations validated across all randomized scenarios
 
-### Credit Contract
+### CREDIT Contract
 Purpose: SIP-010 compliant LP token contract fuzzing (1000 runs)
-- `credit.tests.clar`
+- `CREDIT.tests.clar`
 - Invariant Tests: 1000/1000 passed (100% success rate)
 - Key Validations: Token metadata integrity, supply consistency, burn address filtering, arithmetic bounds
 - Result: SIP-010 compliance maintained under all fuzzing conditions
 
-### Street Contract
+### STREET Contract
 Purpose: Token emission mechanics with kill-switch fuzzing (1000 runs)
-- `street.tests.clar`
+- `STREET.tests.clar`
 - Invariant Tests: 1000/1000 passed (100% success rate)
 - Key Validations: Supply constraints, emission mechanics, one-way kill-switch functionality
 - Result: Emission controls and transfer integrity maintained under all conditions
@@ -73,13 +73,13 @@ Common Patterns:
 
 ## Contract Summary
 
-### Credit Contract (SIP-010 Compliance)
+### CREDIT Contract (SIP-010 Compliance)
 - Demonstrated SIP-010 standard compliance
 - Token metadata immutability properly enforced
 - Supply calculations maintain mathematical precision
 - Transfer mechanics robust under stress testing
 
-### Street Contract (Emission System)
+### STREET Contract (Emission System)
 - Kill-switch functionality working as one-way mechanism
 - Emission controls preventing overflow/underflow
 - Supply constraints properly enforced under all conditions

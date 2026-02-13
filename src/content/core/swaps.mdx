@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Welsh Street Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution for sustainable protocol growth. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between Welsh Corgi Coin (WELSH) and Street Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
+The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution for sustainable protocol growth. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
 
 ## Contract Architecture
 
@@ -13,9 +13,9 @@ The exchange maintains dual reserve pools and implements a **two-tier fee system
 
 ## Core Swap Functions
 
-### swap-a-b: Welsh → Street Swap
+### swap-a-b: WELSH → STREET Swap
 
-Exchanges Welsh tokens for Street tokens using constant product AMM mechanics with integrated fee distribution.
+Exchanges WELSH tokens for STREET tokens using constant product AMM mechanics with integrated fee distribution.
 
 ```clarity
 (define-public (swap-a-b (amount-a uint))
@@ -41,10 +41,10 @@ Exchanges Welsh tokens for Street tokens using constant product AMM mechanics wi
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
       (asserts! (> amount-b-net u0) ERR_INVALID_AMOUNT)
-      (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .exchange none))
-      (try! (transformer .welshcorgicoin rev-a treasury))
-      (try! (transformer .welshcorgicoin fee-a .rewards))
-      (try! (transformer .street amount-b-net tx-sender))
+      (try! (contract-call? .WELSHcorgicoin transfer amount-a tx-sender .exchange none))
+      (try! (transformer .WELSHcorgicoin rev-a treasury))
+      (try! (transformer .WELSHcorgicoin fee-a .rewards))
+      (try! (transformer .STREET amount-b-net tx-sender))
       (try! (contract-call? .rewards update-rewards-a fee-a))
       (var-set reserve-a res-a-new)
       (var-set reserve-b res-b-new)
@@ -65,7 +65,7 @@ Exchanges Welsh tokens for Street tokens using constant product AMM mechanics wi
 ```
 
 **Parameters:**
-- `amount-a`: Amount of Welsh tokens to swap (in natural units)
+- `amount-a`: Amount of WELSH tokens to swap (in natural units)
 
 **AMM Calculation Formula:**
 The swap uses the constant product formula with fee deduction:
@@ -77,34 +77,34 @@ amount-b = (amount-a-net * res-b) / (res-a + amount-a-net)
 **Fee Distribution:**
 - **Fee Component (`fee-a`)**: `(amount-a * fee) / BASIS` → Sent to rewards contract for liquidity providers
 - **Revenue Component (`rev-a`)**: `(amount-a * rev) / BASIS` → Sent to treasury address for protocol growth
-- **Net Input**: `amount-a-net = amount-a - fee-total` → Added to Welsh reserves
+- **Net Input**: `amount-a-net = amount-a - fee-total` → Added to WELSH reserves
 
 **Returns:**
-- `amount-in`: Input Welsh token amount
-- `amount-out`: Output Street token amount received by user
-- `fee-a`: Welsh tokens allocated to liquidity provider rewards
-- `res-a`/`res-a-new`: Welsh reserve amounts (before/after swap)
-- `res-b`/`res-b-new`: Street reserve amounts (before/after swap)
-- `rev-a`: Welsh tokens sent to treasury
+- `amount-in`: Input WELSH token amount
+- `amount-out`: Output STREET token amount received by user
+- `fee-a`: WELSH tokens allocated to liquidity provider rewards
+- `res-a`/`res-a-new`: WELSH reserve amounts (before/after swap)
+- `res-b`/`res-b-new`: STREET reserve amounts (before/after swap)
+- `rev-a`: WELSH tokens sent to treasury
 
 **Requirements:**
 - Input amount must be greater than zero
 - Output amount must be greater than zero (prevents zero-output swaps)
-- User must have sufficient Welsh token balance
+- User must have sufficient WELSH token balance
 - Liquidity pool must be initialized
 
 ## Swap Mechanics
 
 ### Constant Product AMM
 
-The Welsh Street Exchange implements the **constant product formula**:
+The WELSH STREET Exchange implements the **constant product formula**:
 ```
 x * y = k
 ```
 
 Where:
-- `x` = Welsh token reserves (`reserve-a`)
-- `y` = Street token reserves (`reserve-b`) 
+- `x` = WELSH token reserves (`reserve-a`)
+- `y` = STREET token reserves (`reserve-b`) 
 - `k` = Constant product (maintained across swaps)
 
 ### Slippage and Price Impact
@@ -120,8 +120,8 @@ price-impact = 1 - (output-amount / (input-amount * current-rate))
 ### Reserve Updates
 
 **Reserve Management:**
-- **Welsh Reserves**: Updated with net input amount (after fees) for both swap directions
-- **Street Reserves**: Updated with net input amount (after fees) for both swap directions
+- **WELSH Reserves**: Updated with net input amount (after fees) for both swap directions
+- **STREET Reserves**: Updated with net input amount (after fees) for both swap directions
 - **Atomic Updates**: Both reserves updated atomically to maintain consistency
 
 ## Integration Points
@@ -131,7 +131,7 @@ price-impact = 1 - (output-amount / (input-amount * current-rate))
 **Automatic Reward Distribution:**
 ```clarity
 ;; Fee allocation to rewards
-(try! (transformer .welshcorgicoin fee-a .rewards))
+(try! (transformer .WELSHcorgicoin fee-a .rewards))
 (try! (contract-call? .rewards update-rewards-a fee-a))
 ```
 
@@ -145,13 +145,13 @@ price-impact = 1 - (output-amount / (input-amount * current-rate))
 **Protocol Revenue Flow:**
 ```clarity
 ;; Revenue allocation to treasury
-(try! (transformer .welshcorgicoin rev-a treasury))
+(try! (transformer .WELSHcorgicoin rev-a treasury))
 ```
 
 **Treasury Features:**
 - **Configurable Address**: Treasury address can be updated by current treasury
 - **Lock Protection**: Treasury can be permanently locked to prevent changes
-- **Multi-Token Support**: Receives both Welsh and Street tokens from swaps
+- **Multi-Token Support**: Receives both WELSH and STREET tokens from swaps
 
 ## Error Handling
 
@@ -229,28 +229,28 @@ The constant product curve creates natural arbitrage opportunities that:
 
 ## Usage Examples
 
-### Basic Welsh → Street Swap
+### Basic WELSH → STREET Swap
 
 ```clarity
-;; Swap 1,000 Welsh tokens for Street tokens
+;; Swap 1,000 WELSH tokens for STREET tokens
 (contract-call? .exchange swap-a-b u1000000000) ;; 1,000 tokens (6 decimals)
 
 ;; Expected behavior:
-;; 1. Deducts 2% total fees (20 Welsh tokens at default rates)
-;; 2. Uses 980 Welsh for constant product calculation
-;; 3. Returns calculated Street tokens to user
-;; 4. Distributes 10 Welsh to LP rewards, 10 Welsh to treasury
+;; 1. Deducts 2% total fees (20 WELSH tokens at default rates)
+;; 2. Uses 980 WELSH for constant product calculation
+;; 3. Returns calculated STREET tokens to user
+;; 4. Distributes 10 WELSH to LP rewards, 10 WELSH to treasury
 ```
 
-### Basic Street → Welsh Swap
+### Basic STREET → WELSH Swap
 
 ```clarity
-;; Swap 100,000 Street tokens for Welsh tokens  
+;; Swap 100,000 STREET tokens for WELSH tokens  
 (contract-call? .exchange swap-b-a u100000000000) ;; 100,000 tokens (6 decimals)
 
 ;; Expected behavior:
-;; 1. Deducts 2% total fees (2,000 Street tokens at default rates)
-;; 2. Uses 98,000 Street for constant product calculation
-;; 3. Returns calculated Welsh tokens to user
-;; 4. Distributes 1,000 Street to LP rewards, 1,000 Street to treasury
+;; 1. Deducts 2% total fees (2,000 STREET tokens at default rates)
+;; 2. Uses 98,000 STREET for constant product calculation
+;; 3. Returns calculated WELSH tokens to user
+;; 4. Distributes 1,000 STREET to LP rewards, 1,000 STREET to treasury
 ```

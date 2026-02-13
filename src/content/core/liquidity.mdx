@@ -1,10 +1,10 @@
 import { Callout } from 'nextra/components'
 
-# Welsh Street Liquidity Engine
+# WELSH STREET Liquidity Engine
 
 ## Core Liquidity Functions
 
-Welsh Street Exchange implements a unique **five-tier liquidity system** that addresses different needs within the Welsh economy. Understanding the distinctions between these functions is crucial for grasping how the protocol transforms idle WELSH into productive DeFi infrastructure.
+WELSH STREET Exchange implements a unique **five-tier liquidity system** that addresses different needs within the WELSH economy. Understanding the distinctions between these functions is crucial for grasping how the protocol transforms idle WELSH into productive DeFi infrastructure.
 
 ## `provide-liquidity`
 
@@ -75,8 +75,8 @@ Welsh Street Exchange implements a unique **five-tier liquidity system** that ad
 (define-public (burn-liquidity (amount-lp uint))
   (begin
     (asserts! (> amount-lp u0) ERR_ZERO_AMOUNT)
-    (try! (contract-call? .credit transfer amount-lp tx-sender .exchange none))
-    (try! (as-contract (contract-call? .credit burn amount-lp)))
+    (try! (contract-call? .CREDIT transfer amount-lp tx-sender .exchange none))
+    (try! (as-contract (contract-call? .CREDIT burn amount-lp)))
     ;; Updates user's reward position when LP balance changes
     (try! (contract-call? .rewards update-user-rewards tx-sender))
     ;; Burns LP tokens permanently (reduces total supply)
@@ -119,10 +119,10 @@ Result: Each remaining LP token increased in value by ~11%
   )
   (begin
     ;; Transfer user's share minus tax
-    (try! (transformer .welshcorgicoin user-amount-a tx-sender))
-    (try! (transformer .street user-amount-b tx-sender))
+    (try! (transformer .WELSHcorgicoin user-amount-a tx-sender))
+    (try! (transformer .STREET user-amount-b tx-sender))
     ;; Burn the LP tokens
-    (try! (as-contract (contract-call? .credit burn amount-lp)))
+    (try! (as-contract (contract-call? .CREDIT burn amount-lp)))
     ;; Update user's reward position
     (try! (contract-call? .rewards update-user-rewards tx-sender))
     ;; Tax becomes permanently locked
@@ -156,7 +156,7 @@ Result: Each remaining LP token increased in value by ~11%
     (asserts! (and (is-eq res-a u0) (is-eq res-b u0)) ERR_ALREADY_INITIALIZED)
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
     ;; Mint LP tokens to contract owner (to be burned later)
-    (try! (contract-call? .credit mint amount-lp))
+    (try! (contract-call? .CREDIT mint amount-lp))
     ;; Update owner's reward position
     (try! (contract-call? .rewards update-user-rewards tx-sender))
     ;; Set initial reserves
@@ -168,8 +168,8 @@ Result: Each remaining LP token increased in value by ~11%
 - **Fair Distribution Strategy**: Owner will slowly burn their LP tokens over time to benefit community
 - **Geometric Mean LP Allocation**: Contract owner receives outsized LP share (standard AMM behavior)
 - **Governance Flexibility:** Owner can respond to market conditions for optimal initial pool setup
-- **Liquidity Availability:** Welsh token availability for seeding may vary based on market conditions
-- **Market Price Changes:** Welsh token market conditions may fluctuate between deployment and initialization
+- **Liquidity Availability:** WELSH token availability for seeding may vary based on market conditions
+- **Market Price Changes:** WELSH token market conditions may fluctuate between deployment and initialization
 - **Market-Based Ratio**: Contract owner sets ratio based on actual WELSH market price at deployment
 - **One-Time Use**: Only works when pool is completely empty
 - **Price Discovery:** Enables proper initial price setting based on real market data rather than fixed ratios
@@ -179,7 +179,7 @@ Result: Each remaining LP token increased in value by ~11%
 **Fair Distribution Logic**:
 ```
 Traditional AMM Issue: First LP gets massive share via geometric mean
-Welsh Street Solution: Owner takes the outsized share, then burns tokens slowly
+WELSH STREET Solution: Owner takes the outsized share, then burns tokens slowly
 Result: Community LPs get more fair portion of rewards over time
 ```
 

@@ -2,7 +2,7 @@
 
 ## Methodology
 
-The Welsh Street Exchange employs a comprehensive testing framework that validates every contract function and error condition. The testing approach prioritizes complete coverage through dedicated test files for each function, systematic error validation, and chain state verification.
+The WELSH STREET Exchange employs a comprehensive testing framework that validates every contract function and error condition. The testing approach prioritizes complete coverage through dedicated test files for each function, systematic error validation, and chain state verification.
 
 ### Testing Architecture
 
@@ -39,13 +39,13 @@ Each test validates actual blockchain state rather than reiterating expected val
 
 | Contract | Functions | Error Codes | Test Files | Coverage |
 |----------|-----------|-------------|------------|--------|
-| `street.clar` | 8/8 | 6/6 | 4 | 100% |
+| `STREET.clar` | 8/8 | 6/6 | 4 | 100% |
 | `exchange.clar` | 16/16 | 7/7 | 12 | 100% |
-| `credit.clar` | 6/6 | 2/2 | 4 | 100% |
+| `CREDIT.clar` | 6/6 | 2/2 | 4 | 100% |
 | `rewards.clar` | 10/10 | 2/2 | 7 | 100% |
 | `genesis.clar` | 11/11 | 3/3 | 7 | 100% |
 
-**Note**: `welshcorgicoin.clar` is excluded from testing as it exists on mainnet. An exact copy was used to replicate production environment conditions.
+**Note**: `WELSHcorgicoin.clar` is excluded from testing as it exists on mainnet. An exact copy was used to replicate production environment conditions.
 
 ## Testing Infrastructure
 
@@ -66,11 +66,11 @@ Each test validates actual blockchain state rather than reiterating expected val
 
 ## Contract Inventory
 
-### Credit Token 
-- Contract: `credit.clar`
+### CREDIT Token 
+- Contract: `CREDIT.clar`
 - Functions: 6 (mint, burn, transfer, SIP-010 functions)
 - Error codes: 2 (authorization, amounts)
-- Test files: 4 (`credit-mint`, `credit-burn`, `transfer`, ownership)
+- Test files: 4 (`CREDIT-mint`, `CREDIT-burn`, `transfer`, ownership)
 
 ### Exchange Contract
 - Contract: `exchange.clar`
@@ -90,11 +90,11 @@ Each test validates actual blockchain state rather than reiterating expected val
 - Error codes: 2 (authorization, amounts)
 - Test files: 7 (rewards operations, user updates, cleanup, read-only)
 
-### Street Token
-- Contract: `street.clar`
+### STREET Token
+- Contract: `STREET.clar`
 - Functions: 8 (minting, emission, kill-switch, transfers, queries)
 - Error codes: 6 (authorization, limits, intervals, supply)
-- Test files: 4 (`street-mint`, `emission-mint`, `mine-burn-block`, `street-read-only`)
+- Test files: 4 (`STREET-mint`, `emission-mint`, `mine-burn-block`, `STREET-read-only`)
 
 
 ## Test Execution
@@ -103,16 +103,16 @@ All tests execute in isolated simnet environments with fresh state per test case
 
 ## Test Inventory
 
-### Credit Token
+### CREDIT Token
 
-**Contract:** `credit.clar` - 12 Tests
+**Contract:** `CREDIT.clar` - 12 Tests
 
-**`credit-mint.test.ts` (3 tests)**
+**`CREDIT-mint.test.ts` (3 tests)**
 - `CREDIT MINT PASS` - LP token minting
 - `ERR_ZERO_AMOUNT (600)` - Zero amount
 - `ERR_NOT_AUTHORIZED (603)` - Unauthorized caller
 
-**`credit-burn.test.ts` (3 tests)**
+**`CREDIT-burn.test.ts` (3 tests)**
 - `CREDIT BURN PASS` - LP token burning
 - `ERR_ZERO_AMOUNT (600)` - Zero amount
 - `ERR_NOT_AUTHORIZED (603)` - Unauthorized caller
@@ -122,10 +122,10 @@ All tests execute in isolated simnet environments with fresh state per test case
 - `STREET TRANSFER PASS` - STREET token transfer
 
 **`set-token-uri.test.ts` (4 tests)**
-- `CREDIT SET TOKEN URI PASS` - URI modification for credit
-- `STREET SET TOKEN URI PASS` - URI modification for street
-- `ERR_NOT_CONTRACT_OWNER - CREDIT (601)` - Unauthorized credit URI
-- `ERR_NOT_CONTRACT_OWNER - STREET (901)` - Unauthorized street URI
+- `CREDIT SET TOKEN URI PASS` - URI modification for CREDIT
+- `STREET SET TOKEN URI PASS` - URI modification for STREET
+- `ERR_NOT_CONTRACT_OWNER - CREDIT (601)` - Unauthorized CREDIT URI
+- `ERR_NOT_CONTRACT_OWNER - STREET (901)` - Unauthorized STREET URI
 
 ### Exchange Contract
 
@@ -276,11 +276,11 @@ All tests execute in isolated simnet environments with fresh state per test case
 - `GET CLEANUP REWARDS PASS` - Cleanup calculation
 - `GET CLEANUP REWARDS AFTER CLEANUP` - Post-cleanup state
 
-### Street Token
+### STREET Token
 
-**Contract:** `street.clar` - 9 Tests
+**Contract:** `STREET.clar` - 9 Tests
 
-**`street-mint.test.ts` (4 tests)**
+**`STREET-mint.test.ts` (4 tests)**
 - `STREET MINT WITH AUTHORIZED SENDER` - Success case
 - `ERR_NOT_CONTRACT_OWNER (901)` - Unauthorized sender
 - `ERR_ZERO_AMOUNT (900)` - Zero amount input
@@ -297,17 +297,17 @@ All tests execute in isolated simnet environments with fresh state per test case
 - `MINE BURN BLOCK PASS` - Block mining success
 - `MINE BURN BLOCK FAIL` - Block mining failure
 
-**`street-read-only.test.ts` (2 tests)**
+**`STREET-read-only.test.ts` (2 tests)**
 - `GET CURRENT EPOCH` - Current emission epoch reading
 - `GET LAST MINT BLOCK` - Last mint block reading
 
 ### Shared Functions - 18 Tests
 
 **`set-contract-owner.test.ts` (7 tests)**
-- `SET CREDIT CONTRACT OWNER` - Credit ownership change
+- `SET CREDIT CONTRACT OWNER` - CREDIT ownership change
 - `SET EXCHANGE CONTRACT OWNER` - Exchange ownership change
 - `SET REWARDS CONTRACT OWNER` - Rewards ownership change
-- `SET STREET CONTRACT OWNER` - Street ownership change
+- `SET STREET CONTRACT OWNER` - STREET ownership change
 - `UNAUTHORIZED CREDIT CONTRACT OWNER CHANGE` - Unauthorized change
 - `UNAUTHORIZED MULTI-CONTRACT OWNER CHANGES` - Cross-contract validation
 - `ERR_INVALID_PRINCIPAL (706)` - Same principal error
@@ -329,10 +329,10 @@ All tests execute in isolated simnet environments with fresh state per test case
 
 ## Running the Tests
 
-1. Fork repository: [welsh-street-contracts](https://github.com/welshstreet/tests)
+1. Fork repository: [WELSH-STREET-contracts](https://github.com/WELSHSTREET/tests)
 
 ```bash copy filename="terminal"
-git clone https://github.com/welshstreet/tests.git
+git clone https://github.com/WELSHSTREET/tests.git
 ```
 
 2. Install Dependencies

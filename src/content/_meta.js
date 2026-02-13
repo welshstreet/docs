@@ -1,9 +1,9 @@
 export default {
   disclaimer: '',
-  introduction: '',
+  introduction: 'Introduction',
   welshcorgicoin: 'Welsh Corgi Coin',
-  community: 'Community Token Paradox',
-  solution: 'Welsh Street Exchange',
+  community: 'Community Tokens',
+  solution: 'Street Smart Solution',
   core: 'Welsh Street Core',
   tokenomics: 'Tokenomics',
   roadmap: 'Roadmap',

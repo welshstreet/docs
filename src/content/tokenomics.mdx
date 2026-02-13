@@ -14,11 +14,11 @@ The big idea is - as STREET tokens are minted and rewarded to liquidity provider
 
 However, there are two major decisions that needs to be made regarding the tokenomics of the rewards token: Fixed Supply or Infinite Supply.  This documentation highlights the pros and cons of both, including the initial token distribution.
 
-![Welsh Corgi giving a whiteboard presentation](/whiteboard-lb.png)
+![WELSH Corgi giving a whiteboard presentation](/whiteboard-lb.png)
 
 ## The Great Debate: Infinite Supply vs Fixed Supply
 
-Welsh is already a fixed-supply community coin.  Street isn't designed to be a community coin.  Street is a meme rewards token designed to boost welsh.  If the supply remains infinite, that means Street Rewards mint to Welsh Credit holders forever.
+WELSH is already a fixed-supply community coin.  STREET isn't designed to be a community coin.  STREET is a meme rewards token designed to boost WELSH.  If the supply remains infinite, that means STREET Rewards mint to WELSH CREDIT holders forever.
 
 **Infinite Supply - Default DOGE Model**
 
@@ -40,7 +40,7 @@ Welsh is already a fixed-supply community coin.  Street isn't designed to be a c
 - ✅ **Scarcity premium** - Limited supply can drive value appreciation
 - ✅ **Store of value** - No inflation reduces purchasing power erosion
 - ✅ **Speculation appeal** - Fixed cap attracts different investor class
-- ✅ **Parity with WELSH** - 10B STREET matches 10B WelshCorgiCoin supply
+- ✅ **Parity with WELSH** - 10B STREET matches 10B WELSHCorgiCoin supply
 
 **Cons:**
 - ❌ **Finite LP rewards** - Eventually no new tokens to distribute
@@ -71,7 +71,7 @@ The STREET contract features a unique **one-way kill switch** that gives the com
 (asserts!
   (or
     (not (var-get kill-switch))  ;; FALSE = Infinite supply (DOGE model)
-    (<= (+ (ft-get-supply street) amount) TOKEN_SUPPLY)  ;; TRUE = 10B cap (WELSH parity)
+    (<= (+ (ft-get-supply STREET) amount) TOKEN_SUPPLY)  ;; TRUE = 10B cap (WELSH parity)
   )
   ERR_EXCEEDS_TOTAL_SUPPLY)
 ```
@@ -92,10 +92,10 @@ In the fixed supply scenario, the emission mints continues until the total suppl
     (asserts!
       (or
         (not (var-get kill-switch)) ;; checks kill switch
-        (<= (+ (ft-get-supply street) EMISSION_AMOUNT) TOKEN_SUPPLY) ;; stops at total supply
+        (<= (+ (ft-get-supply STREET) EMISSION_AMOUNT) TOKEN_SUPPLY) ;; stops at total supply
       )
       ERR_EXCEEDS_TOTAL_SUPPLY)
-    (try! (ft-mint? street EMISSION_AMOUNT .rewards))
+    (try! (ft-mint? STREET EMISSION_AMOUNT .rewards))
     ;; existing code
   )
 )
@@ -113,16 +113,16 @@ Regardless of the Fixed vs Infinite supply debate, a hypothetical supply of 10,0
 
 Five billion STREET is set aside for the rewards emissions, even if the kill switch is flipped.  This 5 billion would represent 50% of the total supply.
 
-Another 5 billion STREET (50% of total supply) is set aside to follow a strategic allocation designed to bootstrap the Welsh Street ecosystem while ensuring a fair distribution:
+Another 5 billion STREET (50% of total supply) is set aside to follow a strategic allocation designed to bootstrap the WELSH STREET ecosystem while ensuring a fair distribution:
 
 ```clarity
 ;; STREET MINT ALLOCATION (5 Billion Total)
 (define-constant STREET_MINT_CAP u5000000000000000) ;; 5B tokens (50% of supply)
 
-(define-public (street-mint (amount uint))
+(define-public (STREET-mint (amount uint))
     (begin
-        (asserts! (<= (+ (var-get street-minted) amount) STREET_MINT_CAP) ERR_EXCEEDS_STREET_MINT_CAP)
-        (try! (ft-mint? street amount tx-sender)) ;; Mints to deployer for distribution
+        (asserts! (<= (+ (var-get STREET-minted) amount) STREET_MINT_CAP) ERR_EXCEEDS_STREET_MINT_CAP)
+        (try! (ft-mint? STREET amount tx-sender)) ;; Mints to deployer for distribution
     )
 )
 ```

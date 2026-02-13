@@ -2,13 +2,13 @@ import { Callout } from 'nextra/components'
 
 # Revenue Model & Fee Structure
 
-This section explains the three main fee mechanisms in the Welsh Street Exchange contract their settings, and security protections.
+This section explains the three main fee mechanisms in the WELSH STREET Exchange contract their settings, and security protections.
 
 ## Fee System Parameters
 
 ### Fee Rate Configuration
 
-The Welsh Street Exchange implements configurable fee rates with protective bounds to ensure fair pricing and protocol sustainability:
+The WELSH STREET Exchange implements configurable fee rates with protective bounds to ensure fair pricing and protocol sustainability:
 
 ```clarity
 ;; Fee and revenue rate bounds (basis points)
@@ -53,16 +53,16 @@ The Welsh Street Exchange implements configurable fee rates with protective boun
 **Example Calculations:**
 ```clarity
 ;; Default rates (1% fee + 1% rev = 2% total)
-Input: 1,000,000 Welsh tokens
-Fee (LP rewards): 1,000,000 * 100 / 10000 = 10,000 Welsh
-Revenue (treasury): 1,000,000 * 100 / 10000 = 10,000 Welsh
-Net for swap: 1,000,000 - 20,000 = 980,000 Welsh
+Input: 1,000,000 WELSH tokens
+Fee (LP rewards): 1,000,000 * 100 / 10000 = 10,000 WELSH
+Revenue (treasury): 1,000,000 * 100 / 10000 = 10,000 WELSH
+Net for swap: 1,000,000 - 20,000 = 980,000 WELSH
 
 ;; Maximum rates (2% fee + 2% rev = 4% total)
-Input: 1,000,000 Welsh tokens
-Fee (LP rewards): 1,000,000 * 200 / 10000 = 20,000 Welsh
-Revenue (treasury): 1,000,000 * 200 / 10000 = 20,000 Welsh
-Net for swap: 1,000,000 - 40,000 = 960,000 Welsh
+Input: 1,000,000 WELSH tokens
+Fee (LP rewards): 1,000,000 * 200 / 10000 = 20,000 WELSH
+Revenue (treasury): 1,000,000 * 200 / 10000 = 20,000 WELSH
+Net for swap: 1,000,000 - 40,000 = 960,000 WELSH
 ```
 
 ## Revenue Types Overview
@@ -84,7 +84,7 @@ The exchange implements three distinct fee mechanisms: **fee**, **revenue**, and
 ;; Fee distribution in swap-a-b
 (if (> fee-total u0)
     (begin
-        (try! (transformer .welshcorgicoin fee-a .rewards))  ;; Fee goes to rewards
+        (try! (transformer .WELSHcorgicoin fee-a .rewards))  ;; Fee goes to rewards
         (try! (contract-call? .rewards update-rewards-a fee-a))
     ) true)
 ```
@@ -114,7 +114,7 @@ The treasury system is initialized with the contract deployer as the treasury ad
 ;; Revenue distribution in swap-a-b
 (if (> fee-total u0)
     (begin
-        (try! (transformer .welshcorgicoin rev-a treasury))  ;; Revenue to treasury
+        (try! (transformer .WELSHcorgicoin rev-a treasury))  ;; Revenue to treasury
     ) true)
 ```
 
@@ -158,9 +158,9 @@ The deployer contract and treasury address are controlled by two separate privat
 
 ### 3. Tax - Permanent Liquidity Lock
 
-**Purpose**: Exit tax on liquidity removal that permanently increases protocol reserves.  The exit tax is a thank you from the community for participating in the Welsh Street Exchange project.  HTe small tax remains as permanently locked liquidity to benefit the project and community forever.
+**Purpose**: Exit tax on liquidity removal that permanently increases protocol reserves.  The exit tax is a thank you from the community for participating in the WELSH STREET Exchange project.  HTe small tax remains as permanently locked liquidity to benefit the project and community forever.
 
-<Callout>*Nothing is as certain as death, taxes and Welsh going to the moon. -Benjamin Franklin*</Callout>
+<Callout>*Nothing is as certain as death, taxes and WELSH going to the moon. -Benjamin Franklin*</Callout>
 
 **Destination**: Locked within the exchange contract - **cannot be withdrawn by anyone**.
 
@@ -177,8 +177,8 @@ The deployer contract and treasury address are controlled by two separate privat
   )
     (begin
       ;; User receives net amount after tax
-      (try! (transformer .welshcorgicoin user-amount-a tx-sender))
-      (try! (transformer .street user-amount-b tx-sender))
+      (try! (transformer .WELSHcorgicoin user-amount-a tx-sender))
+      (try! (transformer .STREET user-amount-b tx-sender))
       
       ;; Tax is permanently locked in reserves
       (var-set locked-a (+ lock-a tax-a))
@@ -199,11 +199,11 @@ The deployer contract and treasury address are controlled by two separate privat
 
 ## Maximum Fee Rates & Security
 
-The protocol’s commission is capped at 2% of notional per transaction across fees, revenue and taxes. This ceiling is intentionally conservative relative to traditional finance benchmarks. In U.S. broker-dealer practice, FINRA’s long-standing “5% Policy” (Rule 2121) frames what is fair and reasonable for markups/markdowns and commissions; the 2% Welsh Street Cap sits well below that reference point.
+The protocol’s commission is capped at 2% of notional per transaction across fees, revenue and taxes. This ceiling is intentionally conservative relative to traditional finance benchmarks. In U.S. broker-dealer practice, FINRA’s long-standing “5% Policy” (Rule 2121) frames what is fair and reasonable for markups/markdowns and commissions; the 2% WELSH STREET Cap sits well below that reference point.
 
 Mutual-fund distribution charges permitted under FINRA Rule 2341 can be materially higher (commonly several percent and up to ~8.5% in certain structures), making a 2% limit comparatively modest.
 
-In the hedge fund world, "2 and 20” is a widely recognized fee model that normalizes a 2% management fee, and retail advisory fees often range up to ~2% of assets for smaller accounts. Taken together, these Wall Street norms support a 2% maximum as prudent, investor-protective, and squarely within established industry practice.
+In the hedge fund world, "2 and 20” is a widely recognized fee model that normalizes a 2% management fee, and retail advisory fees often range up to ~2% of assets for smaller accounts. Taken together, these Wall STREET norms support a 2% maximum as prudent, investor-protective, and squarely within established industry practice.
 
 The fees, revenues and taxes are initial set to 1% across the board.  User's can check the rates anytime with the various frontend modals or by directly calling the various read-only functions in the exchange contract.
 

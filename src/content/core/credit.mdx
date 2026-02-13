@@ -1,14 +1,14 @@
-# Street Credit
+# STREET CREDIT
 
-## Overview: Activating the Welsh Economic Flywheel
+## Overview: Activating the WELSH Economic Flywheel
 
-CREDIT is the **liquidity provider (LP) token** of Welsh Street Exchange - a tradable SIP-010 fungible token that represents proportional ownership in the WELSH/STREET liquidity pool. As the **key component** in solving WELSH's economic isolation problem, CREDIT enables the secondary markets and speculation opportunities that create the continuous economic activity missing from traditional community coins.
+CREDIT is the **liquidity provider (LP) token** of WELSH STREET Exchange - a tradable SIP-010 fungible token that represents proportional ownership in the WELSH / STREET liquidity pool. As the **key component** in solving WELSH's economic isolation problem, CREDIT enables the secondary markets and speculation opportunities that create the continuous economic activity missing from traditional community coins.
 
-Unlike many Stacks DEXs that use internal accounting or NFT positions, Welsh Street issues **transferable LP tokens** specifically designed to **activate Phase 3 of the Welsh Economic Flywheel** - where CREDIT secondary markets drive sustained economic growth for the entire WELSH ecosystem.
+Unlike many Stacks DEXs that use internal accounting or NFT positions, WELSH STREET issues **transferable LP tokens** specifically designed to **activate Phase 3 of the WELSH Economic Flywheel** - where CREDIT secondary markets drive sustained economic growth for the entire WELSH ecosystem.
 
 ## Innovative LP Token Design
 
-Welsh Street introduces a **Uniswap V2/SushiSwap-style LP token model** to Stacks - the first of its kind in the ecosystem. This design choice creates significant advantages over existing Stacks exchanges:
+WELSH STREET introduces a **Uniswap V2/SushiSwap-style LP token model** to Stacks - the first of its kind in the ecosystem. This design choice creates significant advantages over existing Stacks exchanges:
 
 **Key Innovation**: **Tradable, composable LP tokens** vs. internal balance tracking used by other Stacks DEXs.
 
@@ -45,7 +45,7 @@ The CREDIT contract implements **contract-caller authorization** to prevent depl
     (begin
       (asserts! (> amount u0) ERR_ZERO_AMOUNT)
       (asserts! (is-eq contract-caller .exchange) ERR_NOT_CONTRACT_OWNER) ;; 🔒 CRITICAL SECURITY
-      (try! (ft-mint? credit amount tx-sender))
+      (try! (ft-mint? CREDIT amount tx-sender))
       (ok {minted: amount})
     )
 )
@@ -55,7 +55,7 @@ The CREDIT contract implements **contract-caller authorization** to prevent depl
     (begin
       (asserts! (> amount u0) ERR_ZERO_AMOUNT)
       (asserts! (is-eq contract-caller .exchange) ERR_NOT_CONTRACT_OWNER) ;; 🔒 CRITICAL SECURITY
-      (try! (ft-burn? credit amount tx-sender))
+      (try! (ft-burn? CREDIT amount tx-sender))
       (ok {burned: amount})
     )
 )
@@ -67,9 +67,9 @@ The CREDIT contract implements **contract-caller authorization** to prevent depl
 - ✅ **Immutable Logic**: No functions can be added/modified post-deployment
 - ✅ **Legitimate Operations Only**: Supply changes only through proper LP provision/removal
 
-## Welsh Street vs. Other Stacks DEXs
+## WELSH STREET vs. Other Stacks DEXs
 
-## **Welsh Street Model: Tradable SIP-010 LP Tokens**
+## **WELSH STREET Model: Tradable SIP-010 LP Tokens**
 
 ```
 WELSH + STREET → [Pool Contract] → Issues CREDIT Token (SIP-010)
@@ -111,7 +111,7 @@ Multiple Tokens → [Central Pool Contract]
 
 ```clarity
 // Each CREDIT token represents proportional ownership
-user_share = (user_credit_balance / total_credit_supply) * pool_reserves
+user_share = (user_CREDIT_balance / total_CREDIT_supply) * pool_reserves
 ```
 
 When users redeem CREDIT tokens, they receive their proportional share of **both** WELSH and STREET reserves plus any accumulated fees.
@@ -144,7 +144,7 @@ When users redeem CREDIT tokens, they receive their proportional share of **both
 
 ## Ecosystem Impact
 
-Welsh Street's tradable LP token model **transforms liquidity provision** from a binary (in/out) decision to a **continuous spectrum of strategies**:
+WELSH STREET's tradable LP token model **transforms liquidity provision** from a binary (in/out) decision to a **continuous spectrum of strategies**:
 
 1. **Hold for Yield**: Traditional LP strategy earning fees + emissions
 2. **Trade LP Tokens**: Speculate on pool performance without withdrawing
@@ -161,4 +161,4 @@ The CREDIT contract ensures:
 - **Limited Admin Privileges**: Deployer cannot bypass authorization checks
 - **Legitimate Operations Only**: Supply changes only through proper AMM functions
 
-This design **prevents arbitrary manipulation** while maintaining full AMM functionality and enabling the innovative tradable LP token model that **solves WELSH's economic isolation** by creating secondary markets and expanding utility beyond simple holding - exactly what the Welsh economy needs to achieve sustainable growth.
+This design **prevents arbitrary manipulation** while maintaining full AMM functionality and enabling the innovative tradable LP token model that **solves WELSH's economic isolation** by creating secondary markets and expanding utility beyond simple holding - exactly what the WELSH economy needs to achieve sustainable growth.

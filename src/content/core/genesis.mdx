@@ -2,13 +2,13 @@
 
 ## Overview
 
-The Genesis contract implements Welsh Street's Liquidity Generation Event (LGE), a two-phase system where users contribute Welsh tokens during an initial contribution window and later claim STREET tokens proportional to their contributions. This mechanism ensures fair distribution of STREET tokens based on community participation.
+The Genesis contract implements WELSH STREET's Liquidity Generation Event (LGE), a two-phase system where users contribute WELSH tokens during an initial contribution window and later claim STREET tokens proportional to their contributions. This mechanism ensures fair distribution of STREET tokens based on community participation.
 
 ## Contract Architecture
 
 The Genesis contract manages the entire lifecycle of the token distribution event through distinct phases:
 
-1. **Contribution Phase**: Users contribute Welsh tokens to participate in the LGE
+1. **Contribution Phase**: Users contribute WELSH tokens to participate in the LGE
 2. **Claim Phase**: Users claim STREET tokens proportional to their contributions
 
 ## State Variables
@@ -23,9 +23,9 @@ The Genesis contract manages the entire lifecycle of the token distribution even
 ```
 
 - `claim-active`: Controls whether users can claim STREET tokens (default: false)
-- `contribute-active`: Controls whether users can contribute Welsh tokens (default: true)
+- `contribute-active`: Controls whether users can contribute WELSH tokens (default: true)
 - `addresses`: List of all participants (max 5000 addresses)
-- `total-contribution`: Aggregate amount of Welsh tokens contributed
+- `total-contribution`: Aggregate amount of WELSH tokens contributed
 
 ### Balance Tracking
 
@@ -38,7 +38,7 @@ The Genesis contract manages the entire lifecycle of the token distribution even
 ```
 
 The `balances` map tracks each participant's contribution and claim status:
-- `balance`: Amount of Welsh tokens contributed by the user
+- `balance`: Amount of WELSH tokens contributed by the user
 - `claimed`: Amount of STREET tokens claimed by the user
 
 ## Functions
@@ -47,7 +47,7 @@ The `balances` map tracks each participant's contribution and claim status:
 
 #### `contribute`
 
-Allows users to contribute Welsh tokens during the contribution phase.
+Allows users to contribute WELSH tokens during the contribution phase.
 
 ```clarity
 (define-public (contribute (amount uint))
@@ -61,7 +61,7 @@ Allows users to contribute Welsh tokens during the contribution phase.
     (begin
         (asserts! (is-eq (var-get contribute-active) true) ERR_NOT_ACTIVE_FUND)
         (asserts! (> amount u0) ERR_ZERO_AMOUNT)
-        (try! (contract-call? .welshcorgicoin transfer amount tx-sender .genesis none))
+        (try! (contract-call? .WELSHcorgicoin transfer amount tx-sender .genesis none))
         (var-set total-contribution new-total)
         (map-set balances { address: tx-sender } {
             balance: new-balance,
@@ -82,7 +82,7 @@ Allows users to contribute Welsh tokens during the contribution phase.
 ```
 
 **Parameters:**
-- `amount`: Number of Welsh tokens to contribute (in natural units)
+- `amount`: Number of WELSH tokens to contribute (in natural units)
 
 **Returns:**
 - `amount`: The contributed amount
@@ -91,7 +91,7 @@ Allows users to contribute Welsh tokens during the contribution phase.
 **Requirements:**
 - Contribution phase must be active (`contribute-active` = true)
 - Amount must be greater than zero
-- User must have sufficient Welsh tokens
+- User must have sufficient WELSH tokens
 
 #### `claim`
 
@@ -103,15 +103,15 @@ Allows users to claim STREET tokens proportional to their contribution once the 
         (user-balance-info (default-to { balance: u0 } (map-get? balances { address: tx-sender })))
         (user-balance (get balance user-balance-info))
         (total-contrib (var-get total-contribution))
-        (total-street u1000000000000000) ;; 1 billion STREET tokens in natural units
+        (total-STREET u1000000000000000) ;; 1 billion STREET tokens in natural units
         (user-claim (if (> total-contrib u0)
-                                (/ (* user-balance total-street) total-contrib)
+                                (/ (* user-balance total-STREET) total-contrib)
                                 u0))
     )
     (begin
         (asserts! (is-eq (var-get claim-active) true) ERR_NOT_ACTIVE_FUND)
         (asserts! (> user-balance u0) ERR_ZERO_AMOUNT)
-        (try! (transformer .street user-claim tx-sender))
+        (try! (transformer .STREET user-claim tx-sender))
         (map-set balances { address: tx-sender } {
             balance: u0,
             claimed: user-claim
@@ -128,13 +128,13 @@ Allows users to claim STREET tokens proportional to their contribution once the 
 **Claim Calculation:**
 The STREET tokens allocated to each user are calculated using the formula:
 ```
-user_claim = (user_balance * total_street) / total_contribution
+user_claim = (user_balance * total_STREET) / total_contribution
 ```
 
 Where:
-- `user_balance`: Welsh tokens contributed by the user
-- `total_street`: 1,000,000,000,000,000 (1 billion STREET tokens in natural units)
-- `total_contribution`: Total Welsh tokens contributed by all users
+- `user_balance`: WELSH tokens contributed by the user
+- `total_STREET`: 1,000,000,000,000,000 (1 billion STREET tokens in natural units)
+- `total_contribution`: Total WELSH tokens contributed by all users
 
 **Returns:**
 - `balance`: User's original contribution amount
@@ -142,7 +142,7 @@ Where:
 
 **Requirements:**
 - Claim phase must be active (`claim-active` = true)
-- User must have contributed Welsh tokens
+- User must have contributed WELSH tokens
 - User must not have already claimed
 
 #### Administrative Functions
@@ -279,7 +279,7 @@ Returns current blockchain height information.
    - `claim-active` = false
 
 2. **User Participation**:
-   - Users call `contribute(amount)` with their desired Welsh token amount
+   - Users call `contribute(amount)` with their desired WELSH token amount
    - Tokens are transferred from user to the Genesis contract
    - User's contribution is recorded in the `balances` map
    - User is added to the `addresses` list (if not already present)
@@ -302,7 +302,7 @@ Returns current blockchain height information.
 ## Conclusion
 
 ### Fair Distribution
-The proportional distribution mechanism ensures that users receive STREET tokens exactly proportional to their Welsh token contributions, creating a fair and transparent allocation system.
+The proportional distribution mechanism ensures that users receive STREET tokens exactly proportional to their WELSH token contributions, creating a fair and transparent allocation system.
 
 ### Phase-Based Control
 The two-phase system prevents simultaneous contribution and claiming, ensuring the integrity of the distribution process.
