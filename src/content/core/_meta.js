@@ -9,5 +9,5 @@ export default {
   protection: 'User Protection',
   testing: 'Testing Coverage',
   fuzzing: 'Fuzz Testing',
-  genesis: 'Genesis',
+  security: 'Security Audit'
 }
