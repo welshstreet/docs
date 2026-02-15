@@ -126,6 +126,12 @@ pre.code-transparent {
   margin-top: 1.5rem;
   background-color: rgba(0, 0, 0, 0.5) !important;
 }
+
+/* Blockquote styling - no left border, right-align attribution */
+blockquote {
+  border-left: none !important;
+}
+
 /* Advantage table styling - green hover */
 .advantage table tr:hover {
   background-color: rgba(34, 197, 94, 0.15) !important;
