@@ -1,0 +1,29 @@
+# Future Governance
+
+STREET includes two mechanisms intended for future governance decisions that affect long-run supply policy and how emissions are triggered: 
+
+- **Kill Switch**: A one-way kill switch (which can end new emissions and lock in a terminal cap)
+
+- **Emission Controller**: Attachment point (which can shift emission authorization away from off-chain operators and toward on-chain governance over time).
+
+## Kill Switch
+
+The kill switch is a one-time governance action that changes STREET from a perpetual-emissions rewards asset into a capped, fully-distributed community coin.
+
+Once activated, it cannot be reversed. The intent is credibility: the community can make a binding decision to end dilution and to end the protocol’s emission stream.
+
+This choice mirrors the fixed-supply tradeoff described in `issuance`. Fixed-supply policies deliver a clear scarcity story precisely because emissions are designed to phase out. For a token whose primary purpose is to pay ongoing liquidity incentives, that endpoint is not incidental. This means activating the kill switch ends emissions and the rewards mechanism no longer functions as a protocol-level incentive system.
+
+Concretely, after the kill switch is activated, the protocol will no longer mint new STREET rewards beyond the supply capo f 10 Billion tokens. If the switch is activated before STREET reaches the cap, emissions continue only until the cap is reached. If it is activated after the cap is reached, emissions stop immediately.
+
+This feature creates a clear future choice without forcing a hard cap at launch: start with a rewards token designed for long-run incentives, while retaining the option to later transition STREET into a community coin.
+
+## Emission Controller
+
+Emissions on Stacks do not run automatically. A Clarity contract cannot execute “in the background” or on a timer — it only runs when a transaction calls it. The contract can enforce timing rules using on-chain signals (such as burn block height), but some party still has to submit the transaction that triggers the emission.
+
+In early deployments, that trigger is typically off-chain automation: a service watches for new blocks and calls the emission function when the on-chain conditions met. This approach is operationally simple, but it centralizes reliability and control in whatever operator runs the external trigger. If the service is offline, emissions simply do not occur until the service becomes operational again.
+
+The `emission-controller` is an authorization hook intended to eventually move emission control on-chain. Instead of relying on a single off-chain operator to call `emission-mint`, a governance-controlled contract or multi-signature can become the authorized trigger for emissions.
+
+This does not change the issuance policy. It changes who is allowed to trigger emissions, and how that triggering process can be made more decentralized in the future.

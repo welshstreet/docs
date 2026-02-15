@@ -104,6 +104,21 @@ table td {
 table tr:hover {
   background-color: rgba(255, 165, 0, 0.2);
 }
+
+/* Pros/cons column hover styling */
+table.pros-cons tr:hover {
+  background-color: transparent;
+}
+
+table.pros-cons tr:hover th.pros,
+table.pros-cons tr:hover td.pros {
+  background-color: rgba(34, 197, 94, 0.15);
+}
+
+table.pros-cons tr:hover th.cons,
+table.pros-cons tr:hover td.cons {
+  background-color: rgba(239, 68, 68, 0.15);
+}
 /* Advantage table styling - green hover */
 .advantage table tr:hover {
   background-color: rgba(34, 197, 94, 0.15) !important;
@@ -113,6 +128,7 @@ table tr:hover {
 .disadvantage table tr:hover {
   background-color: rgba(239, 68, 68, 0.15) !important;
 }
+
 /* Logo Card Styling */
 .logo-card {
   display: flex;

@@ -1,0 +1,102 @@
+# Distribution
+
+STREET is designed around fixed emissions, which means long-run total supply depends on time. That makes an “infinite supply” framing useful for describing perpetual rewards, but it is not usable for initial allocations, percentage ownership, or valuation baselines.
+
+The distribution model is designed to favor the community and the liquidity providers who keep the WELSH/STREET market active. Most of the allocation is directed to liquidity incentives and community-oriented distribution, with a smaller portion reserved for development and treasury needs.
+
+For those purposes, the tokenomics model uses a 10,000,000,000 token baseline supply for STREET. This matches WELSH’s fixed supply of 10 Billion and aligns with the governance path where the kill switch can lock STREET into a terminal cap at that same scale.
+
+Within this 10B baseline model, 5,000,000,000 STREET (50%) is reserved for emission rewards. The remaining 5,000,000,000 STREET (50%) is allocated to a strategic distribution to bootstrap the WELSH/STREET ecosystem.
+
+## Minting Functions
+
+The first minting path is `street-mint`, which is used for the initial strategic distribution and is hard-capped at 5B tokens.
+Once that 5B cap is reached, additional STREET issuance must come from the rewards emission mechanism via `emission-mint`.
+
+```clarity
+;; Street mint function controls the initial mint
+
+;; contract owner can mint in tranches for clear onchain accounting
+(define-data-var street-minted uint u0) 
+
+;; Street mint allocation (5 Billion Total)
+(define-constant STREET_MINT_CAP u5000000000000000)
+
+(define-public (street-mint (amount uint))
+    (begin
+        ;; Street mint cannot exceed 5B tokens
+        (asserts! (<= (+ (var-get street-minted) amount) STREET_MINT_CAP)
+            ERR_EXCEEDS_STREET_MINT_CAP)
+        
+        ;; Mints to deployer for distribution
+        (try! (ft-mint? street amount tx-sender)) 
+    )
+)
+```
+
+The second minting path is `emission-mint`, which mints the fixed rewards amount and is authorized via the `emission-controller`.
+
+```clarity
+;; Emission mint the only other function to mint STREET
+
+;; 10,000 STREET tokens
+(define-constant EMISSION_AMOUNT u10000000000)
+
+;; only one entity can call emission-mint
+(define-data-var emission-controller principal tx-sender)
+
+;; emission-mint epoch tracker
+(define-data-var emission-epoch uint u0)
+
+(define-public (emission-mint)
+    (begin
+
+      ;; Only one emission-mint call per bitcoin block
+      (asserts! (not (is-eq burn-block-height last-mint)) ERR_EMISSION_INTERVAL)
+
+      ;; Only the emission-controller can mint (initial the deployer)
+      (asserts! (is-eq tx-sender (var-get emission-controller)) ERR_NOT_CONTRACT_OWNER)
+      
+      ;; emissions are tracked and enforced
+      (var-set emission-epoch (+ (var-get emission-epoch) u1))
+      (var-set last-mint-block burn-block-height)
+    )
+```
+
+## Distribution Breakdown
+
+The distribution model below uses the same 10,000,000,000 token baseline supply for STREET.
+
+The distribution is intentionally weighted toward community ownership and market participation. On this 10B baseline, 90% of STREET is allocated outside of development, and 70% is directed specifically to liquidity: 50% to ongoing liquidity rewards and 20% to liquidity that is seeded and then removed from circulation over time.
+
+The objective is to keep incentives and participation aligned with the system’s purpose: emissions support liquidity around WELSH, while the remaining allocations support launch structure and ongoing operations. The development allocation (10%) is the only portion that is not designed as a community or market-participation allocation.
+
+### Emission Rewards 
+
+**50%** - Half of the baseline supply is reserved for liquidity rewards emissions. STREET is emitted on an ongoing basis and distributed to WELSH/STREET liquidity providers. This allocation is what powers the rewards mechanism over time.
+
+### Burned Liquidity
+
+**20%** - An allocation is reserved to seed initial liquidity. The corresponding CREDIT tokens are removed from circulation over time to reinforce long-run alignment between the pool and community participation.
+
+### Liquidity Generation Event (Genesis)
+
+**10%** - Genesis establishes the initial market structure of the exchange. Early participants provide WELSH to pair against newly minted STREET, creating the initial WELSH/STREET liquidity pool.
+
+### Development Allocation
+
+**10%** - An allocation supports infrastructure, security work, hosting, upgrades, and continued development of the Welsh Street Exchange.
+
+### Treasury Reserve
+
+**10%** - An allocation is reserved for ecosystem growth initiatives and community-directed expansion of the Welsh Street economy.
+
+## Summary
+
+| Allocation | Percentage | Purpose |
+|---|:---:|---|
+| Emission Rewards | 50% | Ongoing liquidity rewards for WELSH/STREET LPs |
+| Burned Liquidity | 20% | Seed liquidity and remove corresponding CREDIT over time |
+| Liquidity Generation Event (Genesis) | 10% | Establish the initial WELSH/STREET pool |
+| Development Allocation | 10% | Fund operations and ongoing development |
+| Treasury Reserve | 10% | Support ecosystem growth initiatives |

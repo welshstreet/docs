@@ -1,0 +1,58 @@
+# Tokenomics Overview
+
+This section explains how STREET is issued, how emissions are executed on-chain, how the initial supply is allocated, and how future governance can change the long-run supply policy. 
+
+Read:
+
+- `issuance` for the economic models
+- `emission` for contract mechanics and triggers
+- `distribution` for allocation and launch structure
+- `future governance` for the one-way kill switch and the emission-controller attachment point
+
+![WELSH Corgi giving a whiteboard presentation](/whiteboard-lb.png)
+
+## Definitions
+
+Definitions below are provided in the context of this documentation and reflect how the terms are used throughout these pages.
+
+### Bitcoin Block
+
+A Bitcoin block is the preferred pacing signal for emissions.
+
+### Cycle
+
+A cycle is the modeling unit used for annualized rates and plots (52,500 epochs ≈ 1 year).
+
+### Disinflationary
+
+Disinflationary means the inflation rate declines over time, even if new tokens continue to be issued.
+
+### Distribution
+
+Distribution describes how STREET supply is allocated at launch and through ongoing rewards, including the shares reserved for liquidity incentives and ecosystem operations.
+
+### Emissions
+
+Emissions are the on-chain mint events that produce and distribute STREET rewards over time.
+
+### Epoch
+
+An epoch is one successful `emission-mint` execution.
+
+### Fixed Emissions
+
+Fixed emissions means a constant amount of STREET is minted per issuance event, producing linear supply growth.
+
+### Fixed Inflation
+
+Fixed inflation means supply grows at a fixed percentage rate per year, which mechanically compounds over time.
+
+For the Fiat-style reference model in `issuance`, the annual inflation rate used in calculations is 3.29% (average US dollar inflation from 1914–2026 based on CPI).
+
+### Fixed Supply
+
+Fixed supply means total supply is capped, typically via an issuance schedule that reduces emissions over time and approaches a terminal limit.
+
+### Issuance
+
+Issuance describes the long-run supply policy (the rule that determines how total supply changes over time).
