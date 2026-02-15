@@ -3,5 +3,5 @@ export default {
   issuance: 'Issuance',
   emission: 'Emissions',
   distribution: 'Distribution',
-  governance: 'Future Governance'
+  governance: 'Governance'
 }

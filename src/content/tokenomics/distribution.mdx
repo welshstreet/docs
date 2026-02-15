@@ -13,6 +13,7 @@ Within this 10B baseline model, 5,000,000,000 STREET (50%) is reserved for emiss
 The first minting path is `street-mint`, which is used for the initial strategic distribution and is hard-capped at 5B tokens.
 Once that 5B cap is reached, additional STREET issuance must come from the rewards emission mechanism via `emission-mint`.
 
+<div className="code-transparent">
 ```clarity
 ;; Street mint function controls the initial mint
 
@@ -33,9 +34,11 @@ Once that 5B cap is reached, additional STREET issuance must come from the rewar
     )
 )
 ```
+</div>
 
 The second minting path is `emission-mint`, which mints the fixed rewards amount and is authorized via the `emission-controller`.
 
+<div className="code-transparent">
 ```clarity
 ;; Emission mint the only other function to mint STREET
 
@@ -62,6 +65,7 @@ The second minting path is `emission-mint`, which mints the fixed rewards amount
       (var-set last-mint-block burn-block-height)
     )
 ```
+</div>
 
 ## Distribution Breakdown
 

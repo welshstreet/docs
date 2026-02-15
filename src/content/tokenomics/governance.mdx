@@ -1,4 +1,6 @@
-# Future Governance
+import { Callout } from 'nextra/components'
+
+# Governance
 
 STREET includes two mechanisms intended for future governance decisions that affect long-run supply policy and how emissions are triggered: 
 
@@ -14,9 +16,59 @@ Once activated, it cannot be reversed. The intent is credibility: the community 
 
 This choice mirrors the fixed-supply tradeoff described in `issuance`. Fixed-supply policies deliver a clear scarcity story precisely because emissions are designed to phase out. For a token whose primary purpose is to pay ongoing liquidity incentives, that endpoint is not incidental. This means activating the kill switch ends emissions and the rewards mechanism no longer functions as a protocol-level incentive system.
 
+### Technical Implementation
+
+The kill switch is implemented in the `emission-mint` function in the `street-token` contract where a check on the `kill-switch` boolean variable is checked every time `emission-mint` is called.  The setter function `set-kill-switch` authorizes the contract owner to call the kill switch one time and one time only. 
+
+#### `emission-mint` 
+
+The `kill-switch` resides in the `emission-mint` function in the `street-token` contract.
+
+<div className="code-transparent">
+```clarity
+;; kill switch initially set to false
+(define-data-var kill-switch bool false)
+
+;; the kill switch resides in the emission-mint function
+(define-public (emission-mint)
+    (begin
+
+    ;; check to see if the kill switch has been flipped
+      (asserts! (or 
+        (not (var-get kill-switch)) 
+        (<= (+ (ft-get-supply street) EMISSION_AMOUNT) TOKEN_SUPPLY)) ERR_KILL_SWITCH_FLIPPED)
+    )
+  )
+```
+</div>
+
+#### `set-kill-switch`
+
+The function `set-kill-switch` only allows the contract owner to flip the switch one time.
+
+<div className="code-transparent">
+```clarity
+;; setter function to toggle the kill switch
+(define-public (set-kill-switch)
+  (begin
+
+    ;; only the contract owner can flip the switch
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    
+    ;; once the kill switch is flipped to true, it cannot be flipped again 
+    (asserts! (is-eq (var-get kill-switch) false) ERR_KILL_SWITCH_FLIPPED)
+    (var-set kill-switch true)
+    (ok true)
+  )
+)
+```
+</div>
+
 Concretely, after the kill switch is activated, the protocol will no longer mint new STREET rewards beyond the supply capo f 10 Billion tokens. If the switch is activated before STREET reaches the cap, emissions continue only until the cap is reached. If it is activated after the cap is reached, emissions stop immediately.
 
 This feature creates a clear future choice without forcing a hard cap at launch: start with a rewards token designed for long-run incentives, while retaining the option to later transition STREET into a community coin.
+
+<Callout type="error">Even with the kill switch is activated, STREET still emits rewards until reaching a 10B supply.</Callout>
 
 ## Emission Controller
 
@@ -24,6 +76,46 @@ Emissions on Stacks do not run automatically. A Clarity contract cannot execute 
 
 In early deployments, that trigger is typically off-chain automation: a service watches for new blocks and calls the emission function when the on-chain conditions met. This approach is operationally simple, but it centralizes reliability and control in whatever operator runs the external trigger. If the service is offline, emissions simply do not occur until the service becomes operational again.
 
-The `emission-controller` is an authorization hook intended to eventually move emission control on-chain. Instead of relying on a single off-chain operator to call `emission-mint`, a governance-controlled contract or multi-signature can become the authorized trigger for emissions.
+### Technical Implementation
 
-This does not change the issuance policy. It changes who is allowed to trigger emissions, and how that triggering process can be made more decentralized in the future.
+#### `emission-mint`
+
+The `emission-controller` hook resides in the `emission-mint` function in the `street-token` contract.
+
+```clarity
+;; variable to store the emission-controller contract address
+;; initially set to the contract owner
+(define-data-var emission-controller principal tx-sender)
+
+;; emission-mint function called by emission-controller
+(define-public (emission-mint)
+    (begin
+
+    ;; authorization check requires the emission-controller to call emission-mint
+      (asserts! (is-eq tx-sender (var-get emission-controller)) ERR_NOT_CONTRACT_OWNER)
+    )
+  )
+```
+
+#### `set-emission-controller`
+
+The function `set-emission-controller` only allows the contract owner to flip the switch one time.
+
+```clarity
+;; setter function to change emission-controller
+(define-public (set-emission-controller (new-controller principal))
+  (begin
+
+    ;; new emission-controller can be contract or multi-sig address
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set emission-controller new-controller)
+    (ok true)
+  )
+)
+```
+
+The `emission-controller` is an authorization hook intended to eventually move emission event control on-chain. Instead of relying on a single off-chain operator to call `emission-mint`, a governance-controlled contract, consensus-controlled contract or multi-signature account can become the authorized trigger for emissions.
+
+Changing the emission controller does not change the issuance policy. It changes who is allowed to trigger emissions, and how that triggering process can be made more decentralized in the future.
+
+<Callout type="info">Upgrading the emission controller can make STREET emissions more decentralized in the future.</Callout>

@@ -10,6 +10,7 @@ Dogecoin started with a declining block-subsidy schedule, but once it reached it
 
 Excerpt from Dogecoin Core (reward logic):
 
+<div className="code-transparent">
 ```cpp
 CAmount GetDogecoinBlockSubsidy(int nHeight, const Consensus::Params& consensusParams, uint256 prevHash) {
     int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
@@ -28,65 +29,9 @@ CAmount GetDogecoinBlockSubsidy(int nHeight, const Consensus::Params& consensusP
 ``` :contentReference[oaicite:1]{index=1}
 ::contentReference[oaicite:2]{index=2}
 ```
-
-
-
-
-
-
-### The Kill Switch
-
-The STREET contract features a unique **one-way kill switch** that gives the community ultimate control over final tokenomic decision. This irreversible decision allows transitioning from DOGE-style infinite supply to Bitcoin-style fixed supply. The idea is to start with infinite supply for growth and adoption. At any time the community can can decide when to cap the supply. It's one-time switched, though. Once capped, it's permanently capped forever.
-
-```clarity
-;; KILL SWITCH MECHANISM (ONE-WAY ONLY)
-(define-data-var kill-switch bool false) ;; Default: infinite supply
-(define-constant TOKEN_SUPPLY u10000000000000000) ;; 10B tokens (parity with WELSH)
-
-(define-public (flip-kill-switch)
-  (begin
-    (asserts! (is-eq (var-get kill-switch) false) ERR_KILL_SWITCH_FLIPPED)
-    (var-set kill-switch true) ;; CANNOT BE REVERSED
-    (ok {kill-switch: true})
-  )
-)
-
-;; SUPPLY LOGIC: INFINITE OR CAPPED AT 10B (WELSH PARITY)
-(asserts!
-  (or
-    (not (var-get kill-switch))  ;; FALSE = Infinite supply (DOGE model)
-    (<= (+ (ft-get-supply STREET) amount) TOKEN_SUPPLY)  ;; TRUE = 10B cap (WELSH parity)
-  )
-  ERR_EXCEEDS_TOTAL_SUPPLY)
-```
-
-
-### Timeline
-
-In the fixed supply scenario, the emission mints continues until the total supply cap of 10B tokens is reached.
-
-```clarity
-(define-constant STREET_MINT_CAP u5000000000000000)
-(define-constant TOKEN_SUPPLY u10000000000000000)
-;; 5B tokens remain for emissions
-
-(define-public (emission-mint) ;; contract has to call mint
-  ;; existing code
-  (begin
-    (asserts!
-      (or
-        (not (var-get kill-switch)) ;; checks kill switch
-        (<= (+ (ft-get-supply STREET) EMISSION_AMOUNT) TOKEN_SUPPLY) ;; stops at total supply
-      )
-      ERR_EXCEEDS_TOTAL_SUPPLY)
-    (try! (ft-mint? STREET EMISSION_AMOUNT .rewards))
-    ;; existing code
-  )
-)
-```
+</div>
 
 Emitting 10,000 tokens every Bitcoin block until the gives community ample time to mature governance and make an informed decision. To the best of our knowledge, no one has ever launched an infinite supply token with the sole purpose of boosting a fixed-supply token. At the programmed emission rate, it will take about 5 years for the supply cap to be reached, so the community has plenty of time to debate, model and decide the best fate of the project.
 
-<Callout type="important">Even if the kill switch is activated today, STREET still emits until reaching parity with WELSH's 10B supply.</Callout>
 
 

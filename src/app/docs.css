@@ -119,6 +119,13 @@ table.pros-cons tr:hover th.cons,
 table.pros-cons tr:hover td.cons {
   background-color: rgba(239, 68, 68, 0.15);
 }
+
+/* Optional: wrap fenced blocks in <div className="code-transparent"> */
+.code-transparent pre,
+pre.code-transparent {
+  margin-top: 1.5rem;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
 /* Advantage table styling - green hover */
 .advantage table tr:hover {
   background-color: rgba(34, 197, 94, 0.15) !important;
