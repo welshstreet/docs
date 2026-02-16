@@ -2,14 +2,14 @@
 
 ## Overview
 
-The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution for sustainable protocol growth. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
+The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution for protocol operations. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
 
 ## Contract Architecture
 
-The exchange maintains dual reserve pools and implements a **two-tier fee system** that supports both liquidity provider rewards and protocol treasury funding:
+The exchange maintains dual reserve pools and implements a **two-tier fee system** that supports both liquidity provider distributions and protocol operations:
 
-1. **Fee Component**: Goes directly to liquidity providers through the rewards system
-2. **Revenue Component**: Funds protocol treasury for development and growth
+1. **Fee Component**: Goes directly to liquidity providers through the distribution system
+2. **Revenue Component**: Funds protocol operations for development and maintenance
 
 ## Core Swap Functions
 
@@ -75,8 +75,8 @@ amount-b = (amount-a-net * res-b) / (res-a + amount-a-net)
 ```
 
 **Fee Distribution:**
-- **Fee Component (`fee-a`)**: `(amount-a * fee) / BASIS` → Sent to rewards contract for liquidity providers
-- **Revenue Component (`rev-a`)**: `(amount-a * rev) / BASIS` → Sent to treasury address for protocol growth
+- **Fee Component (`fee-a`)**: `(amount-a * fee) / BASIS` → Sent to distribution contract for liquidity providers
+- **Revenue Component (`rev-a`)**: `(amount-a * rev) / BASIS` → Sent to treasury address for protocol operations
 - **Net Input**: `amount-a-net = amount-a - fee-total` → Added to WELSH reserves
 
 **Returns:**
@@ -126,19 +126,19 @@ price-impact = 1 - (output-amount / (input-amount * current-rate))
 
 ## Integration Points
 
-### Rewards System Integration
+### Distribution System Integration
 
-**Automatic Reward Distribution:**
+**Automatic Token Distribution:**
 ```clarity
-;; Fee allocation to rewards
+;; Fee allocation to distributions
 (try! (transformer .WELSHcorgicoin fee-a .rewards))
 (try! (contract-call? .rewards update-rewards-a fee-a))
 ```
 
 **Benefits:**
-- **Zero Dilution**: Existing LP holders receive proportional rewards immediately  
+- **Zero Dilution**: Existing LP holders receive proportional distributions immediately  
 - **High Precision**: 9-decimal precision prevents rounding losses
-- **Automatic Updates**: No manual intervention required for reward distribution
+- **Automatic Updates**: No manual intervention required for token distribution
 
 ### Treasury Integration
 

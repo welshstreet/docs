@@ -32,7 +32,7 @@ WELSH STREET Exchange implements a unique **five-tier liquidity system** that ad
 **Key Features**:
 - **LP Tokens Issued**: Users receive CREDIT tokens representing their pool share
 - **Withdrawable**: LP tokens can be redeemed via `remove-liquidity` (subject to withdrawal tax)
-- **Reward Eligible**: LP holders earn trading fees and emission rewards
+- **Distribution Eligible**: LP holders receive trading fees and token emissions
 - **Ratio Dependent**: Uses existing **available** liquidity ratio for token-b calculation
 
 ## `lock-liquidity`
@@ -103,7 +103,7 @@ Result: Each remaining LP token increased in value by ~11%
 **Purpose**: Allows users to withdraw their liquidity position at any time
 **Who can use**: Any LP token holder can remove all or part of their position
 **Tax Applied**: Subject to withdrawal tax that becomes permanently locked liquidity
-**Reward Reset**: User's reward tracking is updated when LP position changes
+**Distribution Reset**: User's distribution tracking is updated when LP position changes
 
 ```clarity
 (define-public (remove-liquidity (amount-lp uint))
@@ -135,7 +135,7 @@ Result: Each remaining LP token increased in value by ~11%
 - **Withdrawal Tax**: Tax percentage is applied (capped at 20% maximum)
 - **Tax Becomes Locked**: Withdrawal taxes permanently increase `locked-a` and `locked-b`
 - **Flexible Timing**: Users can withdraw at any time, no lock-up periods
-- **Reward Position Reset**: User's reward tracking is recalculated based on new LP balance
+- **Distribution Position Reset**: User's distribution tracking is recalculated based on new LP balance
 
 ## `provide-initial-liquidity`
 

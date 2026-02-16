@@ -1,6 +1,6 @@
 import { Callout } from 'nextra/components'
 
-# Revenue Model & Fee Structure
+# Fee Structure & Protocol Operations
 
 This section explains the three main fee mechanisms in the WELSH STREET Exchange contract their settings, and security protections.
 
@@ -28,19 +28,19 @@ The WELSH STREET Exchange implements configurable fee rates with protective boun
 
 ### Fee Parameter Details
 
-#### Fee Component (Liquidity Provider Rewards)
-- **Purpose**: Incentivizes liquidity provision by rewarding LP token holders
-- **Distribution**: Automatically distributed through the rewards contract's zero-debt system
+#### Fee Component (Liquidity Provider Distributions)
+- **Purpose**: Provides token distributions to LP token holders
+- **Distribution**: Automatically distributed through the distribution contract's zero-debt system
 - **Range**: 0.50% - 2.00% (50 - 200 basis points)
 - **Default**: 1.00% (100 basis points)
-- **Token Flow**: Input tokens → Rewards contract → Distributed proportionally to LP holders
+- **Token Flow**: Input tokens → Distribution contract → Distributed proportionally to LP holders
 
-#### Revenue Component (Protocol Treasury)
-- **Purpose**: Funds protocol development, marketing, and ecosystem growth
+#### Revenue Component (Protocol Operations)
+- **Purpose**: Funds protocol development and operations
 - **Distribution**: Sent directly to the configurable treasury address
 - **Range**: 0.50% - 2.00% (50 - 200 basis points)
 - **Default**: 1.00% (100 basis points)
-- **Token Flow**: Input tokens → Treasury address → Protocol development funding
+- **Token Flow**: Input tokens → Treasury address → Protocol operations
 
 ### Total Fee Impact
 
@@ -54,13 +54,13 @@ The WELSH STREET Exchange implements configurable fee rates with protective boun
 ```clarity
 ;; Default rates (1% fee + 1% rev = 2% total)
 Input: 1,000,000 WELSH tokens
-Fee (LP rewards): 1,000,000 * 100 / 10000 = 10,000 WELSH
+Fee (LP distributions): 1,000,000 * 100 / 10000 = 10,000 WELSH
 Revenue (treasury): 1,000,000 * 100 / 10000 = 10,000 WELSH
 Net for swap: 1,000,000 - 20,000 = 980,000 WELSH
 
 ;; Maximum rates (2% fee + 2% rev = 4% total)
 Input: 1,000,000 WELSH tokens
-Fee (LP rewards): 1,000,000 * 200 / 10000 = 20,000 WELSH
+Fee (LP distributions): 1,000,000 * 200 / 10000 = 20,000 WELSH
 Revenue (treasury): 1,000,000 * 200 / 10000 = 20,000 WELSH
 Net for swap: 1,000,000 - 40,000 = 960,000 WELSH
 ```
@@ -71,7 +71,7 @@ The exchange implements three distinct fee mechanisms: **fee**, **revenue**, and
 
 ### 1. Swap Fee Share
 
-**Purpose**: Shared trading fees that reward liquidity providers through the rewards contract.
+**Purpose**: Shared trading fees distributed to liquidity providers through the distribution contract.
 
 **Destination**: Transferred directly to the `.rewards` contract - inaccessible to deployer/treasury.
 
@@ -89,11 +89,11 @@ The exchange implements three distinct fee mechanisms: **fee**, **revenue**, and
     ) true)
 ```
 
-**Security**: These funds are permanently allocated to LP rewards and cannot be accessed by the treasury or contract owner.
+**Security**: These funds are permanently allocated to LP distributions and cannot be accessed by the treasury or contract owner.
 
-### 2. Revenue - Treasury Growth Fund
+### 2. Revenue - Protocol Operations Fund
 
-**Purpose**: Protocol revenue for growth initiatives including buybacks, airdrops, and exchange listings.
+**Purpose**: Protocol fees for operations including development, infrastructure, and maintenance.
 
 **Destination**: Transferred to the treasury address (initially `CONTRACT_OWNER`).
 

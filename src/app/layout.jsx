@@ -38,15 +38,16 @@ export default async function RootLayout({ children }) {
       <Head faviconGlyph="✦" />
       <body suppressHydrationWarning={true}>
         <Layout
-          banner={
-            <Banner storageKey="genesisEventBanner" className="banner-outer">
-              <div className="banner-inner">
-                <a href="https://events.welshtest.net/genesis" target="_blank" rel="noopener">
-                  🔥 Genesis is Live - Contribute to the LGE Now 🔥
-                </a>
-              </div>
-            </Banner>
-          }
+          // banner={
+          //   <Banner storageKey="genesisEventBanner" className="banner-outer">
+          //     <div className="banner-inner">
+          //       <a href="https://events.welshtest.net/genesis" target="_blank" rel="noopener">
+          //         🔥 Genesis is Live - Contribute to the LGE Now 🔥
+          //       </a>
+          //     </div>
+          //   </Banner>
+          // }
+          banner={null}
           copyPageButton={false}
           docsRepositoryBase="https://github.com/welshstreet/docs/tree/main"
           editLink="View on GitHub"

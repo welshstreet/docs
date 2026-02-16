@@ -1,13 +1,13 @@
 # Contracts
 
-A decentralized exchange (DEX) to support STREET, the world's first dedicated _meme rewards token_, built on Stacks blockchain. The DEX enables swaps between WELSH Corgi Coin (WELSH) and STREET Token (STREET), liquidity provisioning, and a dedicated emission and rewards system for liquidity providers.
+A decentralized exchange (DEX) to support STREET, the world's first dedicated _meme emission token_, built on Stacks blockchain. The DEX enables swaps between WELSH Corgi Coin (WELSH) and STREET Token (STREET), liquidity provisioning, and a dedicated emission and distribution system for liquidity providers.
 
 ## Architecture
 
 The contracts form an integrated DeFi ecosystem where:
 - Users provide WELSH / STREET liquidity and receive CREDIT LP tokens
-- Trading fees and STREET emissions accumulate in the rewards contract
-- LP token holders can claim proportional rewards at any time
+- Trading fees and STREET emissions accumulate in the distribution contract
+- LP token holders can claim proportional distributions at any time
 
 ## Core Contracts
 
@@ -15,7 +15,7 @@ The contracts form an integrated DeFi ecosystem where:
 
 - **Contract:** `controller.clar`
 - Utility contract to transfer CREDIT between STX Accounts
-- Manages the reward system adjustment and unclaimed reward tracking
+- Manages the distribution system adjustment and unclaimed token tracking
 - **Contract Links:** [Testnet](https://explorer.hiro.so/txid/0x37d7b52dce6df587e67a8f1bae74e3791e819a2897e56ca9da4d8011c9b91351?chain=testnet)
 
 ### CREDIT
@@ -37,10 +37,10 @@ The contracts form an integrated DeFi ecosystem where:
 ### Rewards
 
 - **Contract:** `rewards.clar`
-- **Rewards Distribution**: Distributes trading fees and emissions to LP token holders
-- Tracks reward global indices and accumulates rewards per share for fair distribution
-- Supports claiming of both WELSH and STREET token rewards
-- Handles pending rewards when no LP tokens exist
+- **Token Distribution**: Distributes trading fees and emissions to LP token holders
+- Tracks distribution global indices and accumulates tokens per share for fair distribution
+- Supports claiming of both WELSH and STREET token distributions
+- Handles pending distributions when no LP tokens exist
 - **Contract Links:** [Testnet](https://explorer.hiro.so/txid/0xe55642db6adba0b22c4f74b4b0b93f75351d7433f67865dd98cbfb335117c2f8?chain=testnet)
 
 ### STREET
@@ -48,7 +48,7 @@ The contracts form an integrated DeFi ecosystem where:
 - **Contract:** `STREET.clar`
 - **STREET Token**: Secondary fungible token (10B total supply)
 - Features emission-based minting with epochs and community mint cap (4B)
-- Automatic emissions every block interval for rewards distribution
+- Automatic emissions every block interval for token distribution
 - **Contract Links:** [Testnet](https://explorer.hiro.so/txid/0x03be0b547ba04e51961e4b9adc1041c276304c872c57d17ed81a8424a1a406d8?chain=testnet)
 
 ### WELSHcorgicoin

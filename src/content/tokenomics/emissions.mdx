@@ -1,0 +1,168 @@
+import { Callout } from 'nextra/components'
+
+{/* 
+  Style guide for this document:
+  - Describes the design logic used in designing the emission schedule
+  - Lighter tone than issuance.mdx - can express creativity and narrative
+  - Targets retail and investor audiences
+  - Balance storytelling with technical credibility
+  - Emphasize deliberate design choices and the "Perfect 10" patterns that emerged
+*/}
+
+# Emissions
+
+This section covers the on-chain execution mechanics: how Bitcoin blocks pace rewards in the `street-token` contract, how `emission-epoch` track events, and what external triggers are used to call mint events.
+
+## Designing the Emission Schedule
+
+After selecting a fixed-emission model (as described in `issuance`), Welsh Street faced the practical challenge of designing a specific emission schedule. Three parameters needed to be set: the baseline reference supply, the emission amount per event, and the emission interval. Each choice was made independently based on technical constraints and cultural references. What emerged from the modeling was unexpected.
+
+### Baseline Reference Supply
+
+The starting point was WELSH itself. WELSH launched with a total supply of 10 billion tokens — a fully distributed, fixed-supply community meme coin with no ongoing issuance. 
+
+For STREET, that 10 billion baseline became both a cultural reference and a practical modeling constraint. The conditional hard cap (activated via the kill switch, described in `governance`) was set to match WELSH's total supply, creating symmetry between the base asset and the rewards token if the community eventually chooses to terminate emissions.
+
+### Fixed Emission Amount
+
+With a baseline reference supply established, the next question was how many tokens to emit per event. The answer came from researching existing fixed-emission blockchains.
+
+The most prominent example — and one of the most successful by market capitalization over time — is Dogecoin. After an early period of declining block rewards, Dogecoin settled into a constant block subsidy of 10,000 DOGE per block. That became tail emissions: permanent fixed issuance that does not decay over time.
+
+The fact that Dogecoin is a fixed-emission blockchain and a fellow dog meme coin is either pure coincidence or divine intervention on behalf of the crypto gods.
+
+![Welsh Corgi levitating like a god](/made-it-up-lb.png)
+
+### DOGE-Inspired Emissions
+
+Dogecoin started with a declining block-subsidy schedule, but once it reached its final reward epoch it switched to permanent fixed issuance: 10,000 DOGE per block. Because Dogecoin targets ~1-minute blocks, that becomes ~10,000 DOGE per minute in steady state. In Dogecoin Core, this is implemented as “constant inflation” after the last halving-era threshold (6 halving intervals × 100,000 blocks = 600,000).
+
+Dogecoin became a fixed-emission, disinflationary token in February of 2014, approximately two months after it's launch in December 2013.
+
+The code block excerpt below is from [Dogecoin Core](https://github.com/dogecoin/dogecoin/blob/c137058c55eb2ec96e2938048134586376d13e34/src/dogecoin.cpp#L126) `dogecoin.app` lines 127 to 149. This code block defaults the block subsidy to 10,000 DOGE per block as tail emissions at the end of the halving cycles.
+
+<div className="code-transparent">
+```cpp
+CAmount GetDogecoinBlockSubsidy(...) // [redacted]
+{
+    int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+
+    if (!consensusParams.fSimplifiedRewards)
+    {
+        // Old-style rewards derived from the previous block hash
+        // ... [redacted]
+        return (1 + rand) * COIN;
+    } else if (nHeight < (6 * consensusParams.nSubsidyHalvingInterval)) {
+        // New-style constant rewards for each halving interval
+        return (500000 * COIN) >> halvings;
+    } else {
+        // Constant inflation
+        return 10000 * COIN;
+    }
+}
+```
+</div>
+
+Dogecoin became a fixed-emission, disinflationary token in February 2014, approximately two months after its launch in December 2013. 
+
+<Callout type="info" emoji="">
+  <div style={{ textAlign: 'center' }}>STREET's emission amount was selected to be 10,000 tokens per epoch.</div>
+</Callout>
+
+### Emission Interval
+
+The final parameter was timing: how frequently should emissions occur?
+
+Stacks is built on Bitcoin. WELSH is a token on Stacks. By proxy, STREET has access to Bitcoin state through Clarity smart contracts. The Stacks blockchain can read Bitcoin block height via `burn-block-height`, which makes Bitcoin blocks a natural pacing signal for emissions.
+
+Bitcoin targets a 10-minute block interval. In the Bitcoin [source code](https://github.com/bitcoin/bitcoin/blob/master/src/chainparams.cpp), the parameters that define this target are found in `chainparams`:
+
+```cpp
+consensus.nPowTargetSpacing = 10 * 60; // 10 minutes
+consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+```
+
+At the outset, there was no deeper justification — just paying homage to Bitcoin and leveraging a technical capability. Stacks has access to Bitcoin's block height, so emissions could be triggered every Bitcoin block. A specialized webhook known as a chainhook can execute off-chain actions every time the Stacks blockchain detects a new Bitcoin block.
+
+That became the emission interval: target one epoch per Bitcoin block, approximately every 10 minutes.
+
+### What the Model Revealed
+
+With the three parameters set — 10 billion baseline, 10,000 tokens per epoch, 10-minute intervals — the team ran simulations to understand the long-term behavior of the system.
+
+The initial supply would be 5 billion STREET (distributed at genesis, as described in `distribution`). The conditional hard cap would be 10 billion STREET (matching WELSH's total supply). Emissions would add 10,000 tokens per epoch until governance activates the kill switch or the cap is reached.
+
+The modeling results were striking:
+
+- **Supply reaches 10B** at epoch 500,000, which occurs in cycle 9.52 — approximately 10 years
+- **Initial inflation rate** at epoch 1 calculates to 10.50% — approximately 10%
+- **Effective annual inflation rate** over the full emission schedule averages 7.44%
+- **Final inflation rate** (if the cap is reached) converges to 5.40%
+
+The pattern wasn't designed. It emerged from the model. Each parameter was chosen independently for its own reasons, but when the numbers were plugged into the algorithms, the pattern of 10s appeared naturally in the output.
+
+For those trained in the arts of tokenomics and who have spent time in the industry, this emission schedule just works.
+
+### Emission Metadata
+
+Based on the 10 Billion token reference model, the data table below summarizes the emission and inflation parameters over this life cycle:
+
+| Parameter | Value |
+|-----------|-------|
+| Model | Fixed Emission Rate |
+| Total cycles | 10 |
+| Epochs per year | 52,500 |
+| Total epochs | 525,000 |
+| Fixed emission amount (per epoch) | 10,000 |
+| Fixed emission amount (per cycle) | 525,000,000 |
+| Initial supply | 5,000,000,000 |
+| Total emissions | 5,250,000,000 |
+| Final total supply | 10,250,000,000 |
+| Total growth factor | 2.05x |
+| Effective annual inflation rate | 7.44% |
+| Average inflation rate | 7.45% |
+| Final inflation rate | 5.40% |
+| Initial inflation rate (epoch 1) | 10.50% |
+| Inflation rate reaches 10% | Epoch 25,000 (cycle 0.48) |
+| Supply reaches 10B | Epoch 500,000 (cycle 9.52) |
+
+The table captures the full emission lifecycle. With the conditional hard cap in place, the system gives the community approximately 10 years to mature governance and make an informed decision about STREET's long-term supply policy. To the best of our knowledge, no one has ever launched an infinite-supply token with the sole purpose of boosting a fixed-supply token. The programmed emission rate ensures the community has plenty of time to debate, model, and decide the best path forward.
+
+## Emission Triggers
+
+The limitation or lack of internal triggers is by design. Stacks smart contracts (written in Clarity) only execute when explicitly called by a transaction included in a Stacks block (anchored to Bitcoin). Stacks has no timers, daemons, background processes, emitters, or schedulers that can call a function autonomously because its consensus is programmatically linked to Bitcoin. This is part of what makes Stacks incredibly secure.
+
+### Chainhooks
+
+To trigger `emission-mint` contract calls, Welsh Street uses Hiro Chainhooks. Chainhooks are an automation framework built specifically for Bitcoin and Stacks. Created by Hiro Systems, chainhooks are off-chain event-driven indexers that listen for specific on-chain events and execute contract calls when conditions are met.
+
+Every Bitcoin block, a Hiro chainhook executes the `emission-mint` function, which mints 10,000 new STREET directly to the rewards contract. This chainhook execution is paced by Bitcoin blocks. Contract logic ensures that only one STREET mint event can occur per Bitcoin block.
+
+### Emission Security Features
+- **Emission amount hardcoded** — Admin cannot change the 10,000 token rate
+- **Bitcoin block timing** — Aligned with Bitcoin's ~10-minute blocks
+- **Rate limited** — Maximum of 1 emission per block prevents spam
+- **Direct to rewards** — Tokens mint directly to LP reward pool
+
+### Fallback Systems
+
+Chainhooks are off-chain infrastructure and can experience downtime. If a mint event is missed, it simply slows STREET's emission schedule. Epochs are not "lost" or "caught up" — the system only mints when triggered.
+
+A conventional CRON job (Supabase scheduled function) is configured as a backup trigger. Instead of firing exactly on a Bitcoin block, the CRON job listens for blockchain state and calls `emission-mint` approximately every 10 minutes. This fallback can occasionally skip blocks, which again just slows the emission schedule.
+
+Slowing emissions is not harmful. It extends the timeline to reach the conditional cap, giving the community even more time to mature governance before making supply policy decisions.
+
+
+
+## Technical Specifications
+
+### Limited Admin Functions
+- `emission-mint` - Trigger emissions (rate-limited, amount fixed)
+- `flip-kill-switch` - One-way supply cap activation
+- `street-mint` - Initial distribution (capped at 5B total)
+
+### Immutable Parameters
+- Emission amount (10,000 tokens) cannot be changed
+- Emission interval (1 block) cannot be changed
+- Kill switch is irreversible once activated
+- STREET mint cap (5B) cannot be exceeded

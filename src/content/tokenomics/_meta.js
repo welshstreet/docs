@@ -1,7 +1,7 @@
 export default {
   overview: 'Overview',
   issuance: 'Issuance',
-  emission: 'Emissions',
+  emissions: 'Emissions',
   distribution: 'Distribution',
   governance: 'Governance'
 }

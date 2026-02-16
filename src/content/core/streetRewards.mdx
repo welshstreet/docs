@@ -1,38 +1,38 @@
 import { Callout } from 'nextra/components'
 
-# Rewards System
+# Distribution System
 
 ## Overview
 
-The WELSH STREET Exchange implements a zero debt cumulative rewards system with global index accounting that provides fair reward distribution to liquidity providers while maintaining system simplicity and gas efficiency. This system eliminates whale manipulation vulnerabilities through join-time snapshots and provides a superior user experience compared to traditional AMM reward mechanisms.
+The WELSH STREET Exchange implements a zero debt cumulative distribution system with global index accounting that provides fair token distribution to liquidity providers while maintaining system simplicity and gas efficiency. This system eliminates whale manipulation vulnerabilities through join-time snapshots and provides a superior user experience compared to traditional AMM distribution mechanisms.
 
 ## What Makes WELSH STREET Special
 
-Unique Feature: No withdrawal required to claim rewards! Unlike other AMMs where you must burn LP tokens to access rewards, WELSH STREET allows you to:
-- ✅ Keep providing liquidity while claiming rewards
-- ✅ Compound your position without losing accumulated rewards
-- ✅ Maintain your market exposure during reward claiming
+Unique Feature: No withdrawal required to claim distributions! Unlike other AMMs where you must burn LP tokens to access distributions, WELSH STREET allows you to:
+- ✅ Keep providing liquidity while claiming distributions
+- ✅ Compound your position without losing accumulated distributions
+- ✅ Maintain your market exposure during distribution claiming
 - ✅ Save on gas costs (no re-deposit transactions needed)
 
-## Reward Sources
+## Distribution Sources
 
-WELSH STREET rewards accumulate from two primary sources:
+WELSH STREET distributions accumulate from two primary sources:
 
-### 1. Trading Fee Revenue
+### 1. Trading Fee Allocation
 - WELSH Token Swaps: A percentage of swap fees from WELSH → STREET trades
 - STREET Token Swaps: A percentage of swap fees from STREET → WELSH trades
-- Real-time accumulation: Fees are distributed immediately to the rewards pool
+- Real-time accumulation: Fees are distributed immediately to the distribution pool
 
-### 2. Emission Rewards
-- Direct STREET Emissions: STREET tokens allocated directly to the rewards pool
-- Liquidity Incentives: Additional rewards to bootstrap and maintain liquidity
-- Protocol Growth: Long-term sustainability through emission schedules
+### 2. Token Emissions
+- Direct STREET Emissions: STREET tokens allocated directly to the distribution pool
+- Liquidity Allocations: Token emissions to bootstrap and maintain liquidity
+- Protocol Operations: Long-term sustainability through emission schedules
 
-### 3. Donations & Enhanced Features
-- **Donation System**: `donate-rewards` unlimited donation capability with automatic tracking
+### 3. Contributions & Enhanced Features
+- **Contribution System**: `donate-rewards` unlimited contribution capability with automatic tracking
 - **Emission Processing**: `update-emission-rewards` with epoch-based protection
 - **Cleanup System**: Automatic detection and redistribution of untracked tokens
-- **Perfect Accounting**: Complete tracking of distributed vs. claimed rewards
+- **Perfect Accounting**: Complete tracking of distributed vs. claimed tokens
 - **Dust Recovery**: Intelligent cleanup of small amounts to prevent token lock
 
 
@@ -44,22 +44,22 @@ The rewards system tracks each user's position and entry timing through a cumula
 
 ```clarity
 ;; Global cumulative indexes (never decrease, only increase)
-(define-data-var global-index-a uint u0)  ;; WELSH rewards per LP (PRECISION scaled)
-(define-data-var global-index-b uint u0)  ;; STREET rewards per LP (PRECISION scaled)
+(define-data-var global-index-a uint u0)  ;; WELSH distributions per LP (PRECISION scaled)
+(define-data-var global-index-b uint u0)  ;; STREET distributions per LP (PRECISION scaled)
 
 ;; Perfect accounting system
-(define-data-var total-distributed-a uint u0)  ;; Total WELSH rewards added
-(define-data-var total-distributed-b uint u0)  ;; Total STREET rewards added
-(define-data-var total-claimed-a uint u0)      ;; Total WELSH rewards claimed
-(define-data-var total-claimed-b uint u0)      ;; Total STREET rewards claimed
+(define-data-var total-distributed-a uint u0)  ;; Total WELSH tokens added
+(define-data-var total-distributed-b uint u0)  ;; Total STREET tokens added
+(define-data-var total-claimed-a uint u0)      ;; Total WELSH tokens claimed
+(define-data-var total-claimed-b uint u0)      ;; Total STREET tokens claimed
 
 (define-map user-rewards
   { account: principal }
   {
     balance-lp: uint,    ;; User's LP token balance
     block-lp: uint,      ;; Block when user joined/updated
-    debt-a: uint,        ;; Accumulated claimed WELSH rewards
-    debt-b: uint,        ;; Accumulated claimed STREET rewards
+    debt-a: uint,        ;; Accumulated claimed WELSH tokens
+    debt-b: uint,        ;; Accumulated claimed STREET tokens
     index-a: uint,       ;; User's WELSH join-time snapshot
     index-b: uint        ;; User's STREET join-time snapshot
   }
@@ -70,12 +70,12 @@ Key Protection Mechanisms:
 - **Global indexes**: Cumulative-only system that never decreases
 - **Join-time snapshots** (`index-a/b`): Lock baseline preventing retroactive claims
 - **Zero debt initialization**: New users start with `debt-a: 0, debt-b: 0`
-- **Perfect accounting**: Complete tracking of distributed vs. claimed rewards
+- **Perfect accounting**: Complete tracking of distributed vs. claimed tokens
 - **High precision**: Uses `PRECISION u1000000000` (9 decimals) for accuracy
 
-### Claim Rewards Logic
+### Claim Distribution Logic
 
-The zero debt cumulative system ensures fair distribution with immediate earning capability:
+The zero debt cumulative system ensures fair distribution with immediate participation:
 
 ```clarity
 (define-public (claim-rewards)
@@ -120,9 +120,9 @@ The zero debt cumulative system ensures fair distribution with immediate earning
 ```
 
 How It Works:
-1. **Calculate earned rewards**: `LP_balance × (current_global_index - user_join_index) / PRECISION`
-2. **Zero debt benefit**: New users start earning immediately with no artificial barriers
-3. **Join-time protection**: User snapshots prevent claiming pre-entry rewards
+1. **Calculate earned tokens**: `LP_balance × (current_global_index - user_join_index) / PRECISION`
+2. **Zero debt benefit**: New users start receiving immediately with no artificial barriers
+3. **Join-time protection**: User snapshots prevent claiming pre-entry distributions
 4. **Perfect accounting**: Track total claimed amounts across all users
 5. **Preserve snapshots**: Keep join-time indexes unchanged for future calculations
 
@@ -133,21 +133,21 @@ LP operations (provide/remove/lock/burn liquidity) call `update-user-rewards()` 
 
 ### The Whale Attack Problem
 
-Traditional AMM reward systems are vulnerable to "whale gaming attacks" where large liquidity providers can:
+Traditional AMM distribution systems are vulnerable to "whale gaming attacks" where large liquidity providers can:
 1. Temporarily deposit massive amounts of liquidity
-2. Claim disproportionate rewards from fees generated before their entry
-3. Immediately withdraw and steal rewards from honest long-term providers
+2. Claim disproportionate distributions from fees generated before their entry
+3. Immediately withdraw and extract distributions from honest long-term providers
 
 ### Zero Debt Cumulative System Eliminates Whale Attacks
 
 Our cumulative index system with join-time snapshots automatically prevents whale manipulation. For example, if a whale deposits massive LP position:
 
-- Day 30: Diva has 100K LP, can claim rewards based on her join-time snapshot
+- Day 30: Diva has 100K LP, can claim distributions based on her join-time snapshot
 - Day 31: Whale deposits 10M LP
-- Gets `index-a/b` = current global indexes (can't claim historical rewards)
-- Gets `debt-a/b` = 0 (zero debt - starts earning immediately)
-- When claiming: Whale only earns from rewards accumulated AFTER their entry
-- Result: Each user only gets rewards proportional to their participation period, protected by join-time snapshots
+- Gets `index-a/b` = current global indexes (can't claim historical distributions)
+- Gets `debt-a/b` = 0 (zero debt - starts receiving immediately)
+- When claiming: Whale only receives from distributions accumulated AFTER their entry
+- Result: Each user only gets distributions proportional to their participation period, protected by join-time snapshots
 
 ### Simple System vs Complex Anti-Whale Measures
 

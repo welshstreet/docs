@@ -25,18 +25,18 @@ export default function IndexPage() {
 					Home
 				</a>
 				<a 
+					href="/docs/disclaimer" 
+					className="btn btn-primary btn-documentation"
+				>
+					Docs
+				</a>
+				<a 
 					href="https://app.welshtest.net/" 
 					target="_blank" 
 					rel="noopener noreferrer"
 					className="btn btn-primary btn-exchange"
 				>
 					App
-				</a>
-				<a 
-					href="/docs/disclaimer" 
-					className="btn btn-primary btn-documentation"
-				>
-					Docs
 				</a>
 			</div>
 			<div className="description">
