@@ -137,7 +137,7 @@ Result: Each remaining LP token increased in value by ~11%
 - **Flexible Timing**: Users can withdraw at any time, no lock-up periods
 - **Distribution Position Reset**: User's distribution tracking is recalculated based on new LP balance
 
-## `provide-initial-liquidity`
+## `initial-liquidity`
 
 **Purpose**: Allows contract owner to set initial pool ratio based on market conditions at deployment
 **Who can use**: Only contract owner, only when pool is empty
@@ -145,7 +145,7 @@ Result: Each remaining LP token increased in value by ~11%
 **Flexibility**: No hardcoded ratios - adapts to market conditions at launch
 
 ```clarity
-(define-public (provide-initial-liquidity (amount-a uint) (amount-b uint))
+(define-public (initial-liquidity (amount-a uint) (amount-b uint))
   (let (
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
@@ -202,7 +202,7 @@ All liquidity functions that change a user's LP token balance automatically upda
 
 **When Reward Updates Occur**:
 - ✅ **`provide-liquidity`**: User gains LP tokens → reward rate increases
-- ✅ **`provide-initial-liquidity`**: Owner gains LP tokens → reward position established
+- ✅ **`initial-liquidity`**: Owner gains LP tokens → reward position established
 - ✅ **`remove-liquidity`**: User loses LP tokens → reward rate decreases
 - ✅ **`burn-liquidity`**: User loses LP tokens → reward rate decreases
 - ❌ **`lock-liquidity`**: No LP tokens created → no reward impact
@@ -243,7 +243,7 @@ Let's trace through a complete scenario:
 **Initial State**: Empty exchange
 - `reserve-a`: 0 WELSH, `locked-a`: 0 WELSH, Available: 0 WELSH
 
-**Step 1**: Contract owner calls `provide-initial-liquidity(1000 WELSH, 119000 STREET)`
+**Step 1**: Contract owner calls `initial-liquidity(1000 WELSH, 119000 STREET)`
 - `reserve-a`: 1000 WELSH, `locked-a`: 0 WELSH, Available: 1000 WELSH
 - Owner receives LP tokens based on geometric mean, establishes 1:119 ratio
 - Creates fair foundation for community LP participation
@@ -284,7 +284,7 @@ Let's trace through a complete scenario:
 
 ### `provide` vs `provide-initial`
 
-| Aspect | `provide-liquidity` | `provide-initial-liquidity` |
+| Aspect | `provide-liquidity` | `initial-liquidity` |
 |--------|---------------------|---------------------------|
 | **Parameters** | One (amount-a) | Two (amount-a, amount-b) |
 | **Pool State** | Active pool required | Empty pool required |
@@ -313,7 +313,7 @@ Let's trace through a complete scenario:
 
 ## Strategic Deployment Flow: From Idle WELSH to Active Economy
 
-1. **Initial Setup**: Contract owner calls `provide-initial-liquidity` based on current WELSH market price, establishing fair pool ratio
+1. **Initial Setup**: Contract owner calls `initial-liquidity` based on current WELSH market price, establishing fair pool ratio
 2. **Economic Activation**: Contract owner calls `lock-liquidity` to create permanent base liquidity foundation
 3. **Community Commitment**: Contract owner gradually calls `burn-liquidity` to sacrifice their outsized LP share, proving dedication to community benefit
 4. **Flywheel Engagement**: WELSH holders call `provide-liquidity` to transform their idle assets into yield-generating CREDIT tokens with STREET emission rewards
