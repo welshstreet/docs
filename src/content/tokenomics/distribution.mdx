@@ -62,7 +62,7 @@ The second minting path is `emission-mint`, which mints the fixed rewards amount
       
       ;; emissions are tracked and enforced
       (var-set emission-epoch (+ (var-get emission-epoch) u1))
-      (var-set last-mint-block burn-block-height)
+      (var-set last-burn-block burn-block-height)
     )
 ```
 </div>
