@@ -82,9 +82,7 @@ consensus.nPowTargetSpacing = 10 * 60; // 10 minutes
 consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
 ```
 
-At the outset, there was no deeper justification — just paying homage to Bitcoin and leveraging a technical capability. Stacks has access to Bitcoin's block height, so emissions could be triggered every Bitcoin block. A specialized webhook known as a chainhook can execute off-chain actions every time the Stacks blockchain detects a new Bitcoin block.
-
-That became the emission interval: target one epoch per Bitcoin block, approximately every 10 minutes.
+Stacks has access to Bitcoin's block height via the `burn-block-height` function in Clarity smart contracts. This makes Bitcoin blocks a natural pacing signal for emissions. The emission interval targets one epoch per Bitcoin block, approximately every 10 minutes.
 
 ### What the Model Revealed
 
@@ -130,39 +128,130 @@ The table captures the full emission lifecycle. With the conditional hard cap in
 
 ## Emission Triggers
 
-The limitation or lack of internal triggers is by design. Stacks smart contracts (written in Clarity) only execute when explicitly called by a transaction included in a Stacks block (anchored to Bitcoin). Stacks has no timers, daemons, background processes, emitters, or schedulers that can call a function autonomously because its consensus is programmatically linked to Bitcoin. This is part of what makes Stacks incredibly secure.
+### Permissionless Public Minting
 
-### Chainhooks
+The `mint` function in the `emission-controller` contract is completely public. Any participant can call it at any time. There are no privileged addresses, no administrator control, and no centralized entity required to trigger emissions.
 
-To trigger `emission-mint` contract calls, Welsh Street uses Hiro Chainhooks. Chainhooks are an automation framework built specifically for Bitcoin and Stacks. Created by Hiro Systems, chainhooks are off-chain event-driven indexers that listen for specific on-chain events and execute contract calls when conditions are met.
+This design makes STREET a truly community-minted token. Emissions occur when community members interact with the protocol, not when developers or administrators decide to release tokens.
 
-Every Bitcoin block, a Hiro chainhook executes the `emission-mint` function, which mints 10,000 new STREET directly to the rewards contract. This chainhook execution is paced by Bitcoin blocks. Contract logic ensures that only one STREET mint event can occur per Bitcoin block.
+### Sybil Protection via Minimum CREDIT Balance
 
-### Emission Security Features
-- **Emission amount hardcoded** — Admin cannot change the 10,000 token rate
-- **Bitcoin block timing** — Aligned with Bitcoin's ~10-minute blocks
-- **Rate limited** — Maximum of 1 emission per block prevents spam
-- **Direct to rewards** — Tokens mint directly to LP reward pool
+To prevent spam and sybil attacks, the mint function requires the caller to hold a minimum CREDIT balance:
 
-### Fallback Systems
+- **Minimum requirement**: 0.01% of total CREDIT supply, or 10 CREDIT tokens (whichever is greater)
+- **Purpose**: Ensures caller has participated in liquidity provision
+- **Effect**: Limits mint calls to active protocol participants
 
-Chainhooks are off-chain infrastructure and can experience downtime. If a mint event is missed, it simply slows STREET's emission schedule. Epochs are not "lost" or "caught up" — the system only mints when triggered.
+This requirement creates a permissionless but spam-resistant system. Anyone can participate, but they must first interact with the protocol by providing liquidity.
 
-A conventional CRON job (Supabase scheduled function) is configured as a backup trigger. Instead of firing exactly on a Bitcoin block, the CRON job listens for blockchain state and calls `emission-mint` approximately every 10 minutes. This fallback can occasionally skip blocks, which again just slows the emission schedule.
+### Bounty Incentive Structure
 
-Slowing emissions is not harmful. It extends the timeline to reach the conditional cap, giving the community even more time to mature governance before making supply policy decisions.
+Each successful mint call distributes 10,000 STREET tokens:
 
+- **9,990 STREET** → Rewards pool (distributed to CREDIT holders)
+- **10 STREET** → Bounty to the caller (0.1% of emission)
 
+The bounty compensates the caller for transaction fees and provides an incentive for timely emission execution. However, the bounty is intentionally small to prevent extractive behavior.
+
+Even if a sophisticated bot operator controlled 100% of all emission calls across the entire 10-year emission schedule, they would receive only **52,500 STREET** (0.1% of total emitted supply). This makes bounty extraction economically insignificant compared to participating in the protocol through liquidity provision.
+
+### Rate Limiting
+
+The `emission-controller` enforces one emission per Bitcoin block:
+
+```clarity
+(asserts! (not (is-eq burn-block-height last-mint)) ERR_EMISSION_INTERVAL)
+```
+
+This prevents multiple emissions within a single Bitcoin block and ensures emissions pace at Bitcoin's ~10-minute interval. The deployer cannot modify this rate limit.
+
+### Complete Immutability
+
+The emission mechanics are hardcoded into the `emission-controller` contract:
+
+- **Emission amount** (10,000 STREET) cannot be changed
+- **Bounty amount** (10 STREET) cannot be changed
+- **Reward amount** (9,990 STREET) cannot be changed
+- **Rate limit** (1 per Bitcoin block) cannot be changed
+- **Eligibility criteria** (minimum CREDIT) cannot be changed
+
+The deployer has no administrative functions to alter emission behavior. The contract executes autonomously based on its immutable code.
+
+### Community Execution
+
+Because the mint function is public and permissionless, emissions occur only when community members choose to call it. If no one calls the function during a particular Bitcoin block, no emission occurs for that block.
+
+This creates organic pacing: emissions happen when the community is active and engaged with the protocol. There is no guaranteed emission schedule independent of community participation.
 
 ## Technical Specifications
 
-### Limited Admin Functions
-- `emission-mint` - Trigger emissions (rate-limited, amount fixed)
-- `flip-kill-switch` - One-way supply cap activation
-- `street-mint` - Initial distribution (capped at 5B total)
+### Emission Controller Contract
 
-### Immutable Parameters
-- Emission amount (10,000 tokens) cannot be changed
-- Emission interval (1 block) cannot be changed
-- Kill switch is irreversible once activated
-- STREET mint cap (5B) cannot be exceeded
+The `emission-controller` contract implements the public permissionless mint function. Any address can call this function to trigger an emission event.
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Emission Controller
+
+;; constants
+(define-constant REWARD u9990000000)  ;; 9,990 STREET to rewards pool
+(define-constant BOUNTY   u10000000)  ;; 10 STREET to caller
+(define-constant BASIS       u10000)  ;; 0.01% basis points
+(define-constant CREDIT         u10)  ;; minimum 10 CREDIT
+
+;; variables
+(define-data-var current-epoch uint u0)
+(define-data-var last-burn-block uint u0)
+(define-data-var last-winner (optional principal) none)
+
+(define-public (mint)
+  (let (
+      (last-mint (var-get last-burn-block))
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+      (caller-credit (unwrap-panic (contract-call? .credit-token get-balance tx-sender)))
+      (min-credit (if (< total-lp BASIS) CREDIT (/ total-lp BASIS)))
+    )
+    (begin
+      ;; Require active liquidity pool
+      (asserts! (> total-lp u0) ERR_NO_LIQUIDITY)
+      
+      ;; Rate limit: one emission per Bitcoin block
+      (asserts! (not (is-eq burn-block-height last-mint)) ERR_EMISSION_INTERVAL)
+      
+      ;; Sybil protection: require minimum CREDIT balance
+      (asserts! (>= caller-credit min-credit) ERR_NOT_ELIGIBLE)
+      
+      ;; Mint bounty to caller
+      (try! (contract-call? .street-token mint BOUNTY tx-sender))
+      
+      ;; Mint reward to pool
+      (try! (contract-call? .street-token mint REWARD .street-rewards))
+      
+      ;; Update rewards pool
+      (try! (contract-call? .street-rewards emission-rewards REWARD total-lp))
+      
+      ;; Update state
+      (var-set current-epoch (+ (var-get current-epoch) u1))
+      (var-set last-burn-block burn-block-height)
+      (var-set last-winner (some tx-sender))
+      
+      (ok {
+        block: burn-block-height,
+        epoch: (var-get current-epoch),
+        reward: REWARD,
+        user: BOUNTY
+      })
+    )
+  )
+)
+```
+</div>
+
+### Key Properties
+
+- **Public function**: Any address can call `mint`
+- **No admin control**: No privileged addresses or owner functions
+- **Fixed amounts**: REWARD and BOUNTY are hardcoded constants
+- **Rate limited**: Maximum one emission per Bitcoin block
+- **Sybil resistant**: Requires minimum CREDIT balance (0.01% of supply or 10 CREDIT)
+- **Autonomous execution**: Contract operates independently of developer actions

@@ -5,7 +5,7 @@ export default {
   streetMarket: 'Exchange',
   liquidity: 'Liquidity',
   streetRewards: 'Rewards',
-  revenue: 'Revenue Model',
+  fee: 'Fee Structure',
   protection: 'User Protection',
   testing: 'Testing Coverage',
   fuzzing: 'Fuzz Testing',
