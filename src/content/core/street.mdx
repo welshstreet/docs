@@ -1,0 +1,58 @@
+# Street Token
+
+STREET is the rewards token of the Welsh Street Meme Rewards protocol. This page covers the technical implementation of STREET and documents contract functions that extend beyond the standard SIP-010 specification. For tokenomics details including initial distribution and emission schedule, see the [Tokenomics](https://docs.welshstreet.com/docs/tokenomics/overview) section.
+
+## Core Functions
+
+### Mint
+
+The `mint` function uses the standard clarity function `ft-mint?` however has authoization restrictions to the `emission-controller` and `street-controller` contracts that manage the emission minting and NFT minting respectively.
+
+<div className="code-transparent">
+```clarity
+(define-public (mint (amount uint) (recipient principal))
+    (begin
+      (asserts!
+        (or
+          ;; manages emission minting  
+          (is-eq contract-caller .emission-controller)
+          
+          ;; manages NFT minting
+          (is-eq contract-caller .street-controller)
+        )
+        ERR_NOT_AUTHORIZED
+      )
+      (try! (ft-mint? street amount recipient))
+      (ok true)
+    )
+)
+```
+</div>
+
+
+### Automated Initial Mint
+
+Upon contract deployment, a one-time mint of 2B tokens are minted directly to the deployer for initial liquidity provisioning. This event only happens once at contract deployment and has not callable function. 
+
+<div className="code-transparent">
+```clarity
+;; The Great Welsh $STREET TGE
+
+(begin
+  (try! (ft-mint? street u2000000000000000 (var-get contract-owner)))
+)
+```
+</div>
+
+## Supply Mechanics
+
+STREET implements a fixed-emission, perpetual-supply token model.
+
+## Token Metadata
+
+- **Standard**: SIP-010 Fungible Token
+- **Decimals**: 6
+- **Symbol**: STREET
+- **Supply**: Perpetual
+- **Mint Authority**: `emission-controller` and `street-controller`
+- **Contract Link**: [street-token](/#)

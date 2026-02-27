@@ -2,6 +2,9 @@
 
 ## Overview
 
+Welsh Street utilizes Uniswap V2-style LP token model  This design choice creates significant advantages over existing Stacks exchanges:
+
+
 The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution for protocol operations. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
 
 ## Contract Architecture
@@ -254,3 +257,30 @@ The constant product curve creates natural arbitrage opportunities that:
 ;; 3. Returns calculated WELSH tokens to user
 ;; 4. Distributes 1,000 STREET to LP rewards, 1,000 STREET to treasury
 ```
+
+
+
+
+
+### 1. Swap Fee Share
+
+**Purpose**: Shared trading fees distributed to liquidity providers through the distribution contract.
+
+**Destination**: Transferred directly to the `.rewards` contract - inaccessible to deployer/treasury.
+
+**Implementation in Swaps**:
+
+```clarity
+(fee-a (/ (* amount-a (var-get fee)) BASIS))
+(fee-total (/ (* amount-a (+ (var-get fee) (var-get rev))) BASIS))
+
+;; Fee distribution in swap-a-b
+(if (> fee-total u0)
+    (begin
+        (try! (transformer .WELSHcorgicoin fee-a .rewards))  ;; Fee goes to rewards
+        (try! (contract-call? .rewards update-rewards-a fee-a))
+    ) true)
+```
+
+**Security**: These funds are permanently allocated to LP distributions and cannot be accessed by the treasury or contract owner.
+

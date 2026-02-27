@@ -318,3 +318,46 @@ Let's trace through a complete scenario:
 3. **Community Commitment**: Contract owner gradually calls `burn-liquidity` to sacrifice their outsized LP share, proving dedication to community benefit
 4. **Flywheel Engagement**: WELSH holders call `provide-liquidity` to transform their idle assets into yield-generating CREDIT tokens with STREET emission rewards
 5. **Sustainable Growth**: Withdrawal taxes continuously expand the locked base while LP burning increases reward share for community
+
+
+
+### 3. Tax - Permanent Liquidity Lock
+
+**Purpose**: Exit tax on liquidity removal that permanently increases protocol reserves.  The exit tax is a thank you from the community for participating in the WELSH STREET Exchange project.  HTe small tax remains as permanently locked liquidity to benefit the project and community forever.
+
+<Callout>*Nothing is as certain as death, taxes and WELSH going to the moon. -Benjamin Franklin*</Callout>
+
+**Destination**: Locked within the exchange contract - **cannot be withdrawn by anyone**.
+
+**Implementation in Liquidity Removal**:
+```clarity
+(define-public (remove-liquidity (amount-lp uint))
+  (let (
+    (amount-a (/ (* amount-lp aval-a) total-supply-lp))
+    (amount-b (/ (* amount-lp aval-b) total-supply-lp))
+    (tax-a (/ (* amount-a (var-get tax)) BASIS))        ;; Calculate tax
+    (tax-b (/ (* amount-b (var-get tax)) BASIS))
+    (user-amount-a (- amount-a tax-a))                  ;; User gets amount minus tax
+    (user-amount-b (- amount-b tax-b))
+  )
+    (begin
+      ;; User receives net amount after tax
+      (try! (transformer .WELSHcorgicoin user-amount-a tx-sender))
+      (try! (transformer .STREET user-amount-b tx-sender))
+      
+      ;; Tax is permanently locked in reserves
+      (var-set locked-a (+ lock-a tax-a))
+      (var-set locked-b (+ lock-b tax-b))
+      
+      (ok { burned-lp: amount-lp,
+            tax-a: tax-a,                              ;; Tax amounts recorded
+            tax-b: tax-b,
+            user-a: user-amount-a,
+            user-b: user-amount-b
+      })
+    )
+  )
+)
+```
+
+**Benefit**: Permanently increases liquidity depth, benefiting all WELSH, STREET, and CREDIT LP holders through reduced slippage and improved price stability.
