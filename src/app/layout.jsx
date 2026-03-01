@@ -4,6 +4,7 @@ import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
 import './docs.css'
+import MaintenanceOverlay from '../components/maintenance-overlay'
 
 export const metadata = {
   metadataBase: new URL('https://docs.welshstreet.com/'),
@@ -16,6 +17,9 @@ export const metadata = {
     site: 'https://x.com/welshstreet'
   }
 }
+
+// Toggle this to enable/disable maintenance mode
+const MAINTENANCE_MODE = true
 
 export default async function RootLayout({ children }) {
   const navbar = (
@@ -37,6 +41,7 @@ export default async function RootLayout({ children }) {
     <html lang="en" dir="ltr" suppressHydrationWarning className="dark">
       <Head faviconGlyph="✦" />
       <body suppressHydrationWarning={true}>
+        {MAINTENANCE_MODE && <MaintenanceOverlay />}
         <Layout
           // banner={
           //   <Banner storageKey="genesisEventBanner" className="banner-outer">

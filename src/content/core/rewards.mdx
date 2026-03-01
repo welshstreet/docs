@@ -35,6 +35,18 @@ WELSH STREET distributions accumulate from two primary sources:
 - **Perfect Accounting**: Complete tracking of distributed vs. claimed tokens
 - **Dust Recovery**: Intelligent cleanup of small amounts to prevent token lock
 
+## Reward System Integration
+
+All liquidity functions that change a user's LP token balance automatically update their reward position:
+
+**When Reward Updates Occur**:
+- ✅ **`provide-liquidity`**: User gains LP tokens → reward rate increases
+- ✅ **`initial-liquidity`**: Owner gains LP tokens → reward position established
+- ✅ **`remove-liquidity`**: User loses LP tokens → reward rate decreases
+- ✅ **`burn-liquidity`**: User loses LP tokens → reward rate decreases
+- ❌ **`lock-liquidity`**: No LP tokens created → no reward impact
+
+<Callout type="info">Always claim rewards before changing liquidity positions</Callout>
 
 ## Technical Implementation
 
