@@ -1,24 +1,26 @@
 # Distribution
 
-The STREET distribution model is 100% dedicated and designed to favor the community and the liquidity providers who keep the WELSH / STREET market active. There is no treasury or treasury allocation.  There is no initial developer allocation.  There are no investors and no initial coin offering to insiders.
+The STREET distribution model is 100% dedicated and designed to favor the community and keep the Welsh Street market active. There is no treasury or treasury allocation.  There is no initial developer allocation.  There are no investors and no initial coin offering to insiders.
 
-Most of the allocation is directed to liquidity incentives and community-oriented distribution.
+The entire allocation is directed to liquidity and community-oriented distribution.
 
-## Distribution Breakdown
+## Breakdown
 
 The distribution model deploys 5,000,000,000 STREET including 2,000,000,000 to the initial liquidity pool and the 3,000,000,000 to the initial community allocation via the Genesis NFT event.
 
-The objective is to keep incentives and participation aligned with the system’s purpose: emissions support liquidity around WELSH, while the remaining allocations support launch structure and ongoing operations.
+The objective is to keep incentives and participation aligned with the system’s purpose: Meme Rewards support WELSH and the Welsh Community.
 
-### Emission Rewards 
+### Initial Distribution 
 
-**30%** of the baseline supply is reserved for the Genesis NFT event. STREET is minted to users who donate 1,000 WELSH to the rewards pool and mint a commemorative NFT. This allocation is what initial distributes STREET tokens to the community.
+**30%** of the reference supply is reserved for the Genesis NFT event. STREET is minted to users who donate 1,000 WELSH to the rewards pool and mint a commemorative NFT. This allocation is what initial distributes STREET tokens to the community.
 
 ### Initial Liquidity 
 
-**20%** - An allocation is minted on contract deployment to seed initial liquidity. The deployer pairs the STREET with WELSH to establish the initial liquidity pool. The WELSH is provided by the deployer with no investors or insiders.
+**20%** of the reference supply is minted on contract deployment to seed initial liquidity. The deployer pairs this STREET with WELSH to establish the initial liquidity pool. The WELSH is provided by the deployer with no investors or insiders.
 
-## Minting functions
+## Minting Functions
+
+The STREET token is minted from the `street-token` contract and distributed by the `street-nft` contract. The process is managed and controlled by the `street-controller` contract.
 
 ### Street Token
 
@@ -56,17 +58,17 @@ During the deployment of the `street-token` contract, 2,000,000,000 STREET token
 ```
 </div>
 
-### Street controller
+### Street Controller
 
-The `street-controller` contract controls the minting of STREET, collection of WELSH donations from community members, updates the rewards pool and mints NFTs to the users. 
+The `street-controller` contract controls the minting of STREET, collection of WELSH donations from community members during the NFT mint, and updates the rewards pool every time a user donates WELSH and mints a Genesis NFT. 
 
 <div className="code-transparent">
 ```clarity
 ;; constants
-(define-constant MINT_BONUS  u1000000000000)
-(define-constant MINT_STREET  u100000000000)
-(define-constant DONATE_WELSH   u1000000000)
-(define-constant MINT_CAP            u21000)
+(define-constant MINT_BONUS  u1000000000000) ;; every 21 NFTS
+(define-constant MINT_STREET  u100000000000) ;; standard mint amount
+(define-constant DONATE_WELSH   u1000000000) ;; welsh donation to mint
+(define-constant MINT_CAP            u21000) ;; maximum supply of 21000 NFTs
 
 ;; variables
 (define-data-var mint-count uint u0)
@@ -119,7 +121,7 @@ The `street-nft` contract mints the NFTs for the Welsh Street Genesis NFT event
 
 ## Genesis NFT Event
 
-The Genesis NFT event distributes 3,000,000,000 STREET tokens (30% of baseline supply) to community members through a public NFT mint. Each participant donates 1,000 WELSH to the rewards pool and receives a commemorative NFT paired with STREET tokens.
+The Genesis NFT event distributes 3,000,000,000 STREET tokens (30% of reference supply) to community members through a public NFT mint. Each participant donates 1,000 WELSH to the rewards pool and receives a commemorative NFT paired with STREET tokens.
 
 ### Distribution Structure
 
@@ -136,39 +138,57 @@ Each cycle distributes 3,000,000 STREET:
 
 After each milestone mint at position 21, the cycle resets and begins again.
 
-### NFT Characteristics
+### NFT Attributes
 
-Each NFT includes visual elements based on token type and background theme:
+Each NFT includes visual elements based on token type and a background theme based on the different utilities on the Welsh Street Exchange.
 
-**Token Types** (assigned by position):
-- **Orange (welsh)**: 50% of standard mints (10,000 NFTs)
-- **Blue (street)**: 50% of standard mints (10,000 NFTs)
-- **Purple (credit)**: All milestone mints (1,000 NFTs)
+#### Token Type
 
-**Background Themes** (distributed evenly):
-- legends 🔴
-- liquidity 🔵
-- mint 🟢
-- rewards 🟣
-- swap 🟠
-- transfer ⚫
+The main attribute of the Genesis NFT is inspired by WELSH and the two new tokens STREET and CREDIT together creating the Meme Rewards Protocol.
+
+- 🟠 **WELSH**: 50% of standard mints (10,000 NFTs)
+- 🔵 **STREET**: 50% of standard mints (10,000 NFTs)
+- 🟣 **CREDIT**: All milestone mints (1,000 NFTs)
+
+#### Backgrounds
+
+The six backgrounds are inspired by the six main utility functions of the Meme Rewards protocol and the different utilities users may find on the Welsh Street Exchange.
+
+- 🟥 Legends
+- 🟦 Liquidity
+- 🟩 Mint
+- 🟪 Rewards
+- 🟧 Swap
+- ⬛ Transfer
 
 Each background appears exactly 3,500 times across the 21,000 NFT collection.
 
-### Technical Implementation
+### Rarity Table
 
-The mint process executes through the `street-controller` contract:
+The Welsh Street Genesis NFT collection is designed to be commemorative, fun and a fair way to initially distribute STREET tokens to the community.  The collection does not focus on rarity but rather a balanced distribution.  The rarity table is shown below:
 
-1. User calls mint function with sufficient WELSH balance
-2. Contract verifies WELSH balance (≥1,000 WELSH)
-3. Contract verifies user has not exceeded 2-mint limit
-4. Contract verifies total mint count has not reached 21,000 cap
-5. STREET tokens minted to user (amount based on cycle position)
-6. NFT minted to user
-7. WELSH transferred from user to rewards pool
-8. Rewards pool updated with donated WELSH
+| Token | Background | Count | Percentage |
+|-------|------------|:-----:|:----------:|
+| 🟠 WELSH | 🔴 Legends | 1,667 | 7.94% |
+| 🟠 WELSH | 🔵 Liquidity | 1,666 | 7.93% |
+| 🟠 WELSH | 🟢 Mint | 1,667 | 7.94% |
+| 🟠 WELSH | 🟣 Rewards | 1,667 | 7.94% |
+| 🟠 WELSH | 🟠 Swap | 1,666 | 7.93% |
+| 🟠 WELSH | ⚫ Transfer | 1,667 | 7.94% |
+| 🔵 STREET | 🔴 Legends | 1,666 | 7.93% |
+| 🔵 STREET | 🔵 Liquidity | 1,667 | 7.94% |
+| 🔵 STREET | 🟢 Mint | 1,666 | 7.93% |
+| 🔵 STREET | 🟣 Rewards | 1,667 | 7.94% |
+| 🔵 STREET | 🟠 Swap | 1,667 | 7.94% |
+| 🔵 STREET | ⚫ Transfer | 1,667 | 7.94% |
+| 🟣 CREDIT | 🔴 Legends | 167 | 0.80% |
+| 🟣 CREDIT | 🔵 Liquidity | 167 | 0.80% |
+| 🟣 CREDIT | 🟢 Mint | 167 | 0.80% |
+| 🟣 CREDIT | 🟣 Rewards | 166 | 0.79% |
+| 🟣 CREDIT | 🟠 Swap | 167 | 0.80% |
+| 🟣 CREDIT | ⚫ Transfer | 166 | 0.79% |
 
-### NFT Function
+### NFT Utility
 
 NFTs serve as commemorative tokens representing participation in the Genesis event. They do not confer:
 
@@ -177,9 +197,7 @@ NFTs serve as commemorative tokens representing participation in the Genesis eve
 - Special access or privileges
 - Administrative control
 
-The NFT represents the STREET token distribution received during the mint event.
+The NFT represents the STREET token distribution received during the genesis event.
 
-### Launch Design
-
-The protocol launches independently of mint completion. The exchange can function whether 10% or 100% of NFTs are minted, as initial liquidity is provided separately by the deployer. There is no pressure for full mint-out, allowing organic adoption over time.
+The protocol launches independently of mint completion. The exchange can function whether 10% or 100% of NFTs are minted, as initial liquidity is provided separately by the deployer. There is no pressure for full mint-out, allowing organic adoption and community participation over time.
 
