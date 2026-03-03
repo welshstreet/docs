@@ -12,6 +12,20 @@ By accessing or using the Welsh Street website (welshstreet.com), the Welsh Stre
 
 You represent and warrant that you are of legal age and have capacity to enter a binding agreement; you are not in a sanctioned or prohibited jurisdiction; and your use complies with applicable laws (including securities, commodities, tax, AML, and sanctions). You are solely responsible for understanding and following all laws applicable to your activity.
 
+## Sanctions Compliance & Geographic Restrictions
+
+The Service is not available in jurisdictions subject to comprehensive U.S. sanctions administered by the Office of Foreign Assets Control (OFAC), including but not limited to: Cuba, Iran, North Korea, and Syria
+
+The Service employs automated geo-blocking via hosting infrastructure to restrict access from OFAC-sanctioned regions. Access may be blocked without notice based on IP address geolocation.
+
+By using the Service, you represent that you are not:
+- Located in or a resident of a sanctioned jurisdiction
+- Listed on any U.S. government prohibited party list (including the OFAC Specially Designated Nationals list)
+- Acting on behalf of any sanctioned person or entity
+- Using proxy, VPN, or other technology to circumvent geographic restrictions
+
+Violations may result in immediate termination of access and reporting to relevant authorities as required by law.
+
 ## Non-Custodial; Wallets; On-Chain Transactions
 
 - The Service is a non-custodial interface to blockchain protocols. We do not custody, hold, or have access to your assets, keys, or funds at any time.
@@ -69,13 +83,12 @@ We may charge interface or service fees, disclosed at point of use or in documen
 
 You are solely responsible for all taxes arising from your use of the Service, including reporting and payment obligations.
 
-## Contract Economics: Fees, Revenue, and Liquidity Tax
+## Contract Economics: Fees and Liquidity Tax
 
 The Welsh Street Exchange smart contracts implement the following mechanisms:
 
-- Swap Fee: A small percentage fee (typically 0.5%, with a hard-coded maximum of 5%) is applied to swaps. This fee is transferred to the rewards pool and distributed to liquidity providers.
-- Swap Revenue: A small percentage (typically 0.5%, with a hard-coded maximum of 5%) may also be applied to swaps as exchange revenue. This revenue is transferred to the Exchange treasury and may be used at the discretion of the Exchange.
-- Liquidity Tax: As part of anti-whale protection measures, an early withdrawal penalty “liquidity tax” (typically 10%, with a hard-coded maximum of 20% for extreme manipulation events) may apply to liquidity providers who remove liquidity before a minimum holding period. This mechanism is intended to protect users and the liquidity pool from manipulation.
+- Swap Fee: A 1% immutable fee is applied to all swaps. **All swap fees are transferred directly to the rewards contract and distributed to liquidity providers.** The Exchange has no revenue or income stream.
+- Liquidity Tax: A 1% immutable exit tax applies to liquidity withdrawals. This tax is retained in the pool as permanently locked liquidity, which discourages short-term liquidity provision, creates friction for liquidity removal, and redistributes value from exiting liquidity providers to remaining liquidity providers by increasing pool depth.
 
 This liquidity “tax” is not a government tax and should not be confused with legal tax obligations. Users remain solely responsible for recording, reporting, and paying any applicable taxes related to their transactions. The Welsh Street Exchange does not record, provide, or issue tax/accounting information to users.
 

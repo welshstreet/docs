@@ -53,7 +53,7 @@ Our AMM uses slippage as upper and lower bounds to protect traders and LPs, deli
   Encoded directly as post-conditions (“spend ≤ X”, “receive ≥ Y”), enforced by the chain—stronger than UI-only checks.
 
 - Reasonable Fee Limits:
-  Cap what the treasury/fee contract can collect per tx. If a misconfig would exceed that cap, the tx reverts.
+  Cap what the rewards contract can collect per tx. If a misconfig would exceed that cap, the tx reverts.
 
 
 ### Example 1 — Massive Move
@@ -90,8 +90,8 @@ Two possible outcomes at commit time:
 
 > The protocol fee is configured as 2% maximum. A misconfiguration or upgrade could try to take more.
 
-- User tx includes a fee-limit post-condition against the treasury contract principal:
-  “Treasury may receive ≤ F units for this transaction.”
+- User tx includes a fee-limit post-condition against the rewards contract principal:
+  "Rewards contract may receive ≤ F units for this transaction."
 
 <Callout type="default">If fee transfer would exceed F, the post-condition fails → revert. Users can cap fees independently of UI or contract configuration mistakes.</Callout>
 

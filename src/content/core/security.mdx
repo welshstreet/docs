@@ -29,7 +29,7 @@ The WELSH STREET Exchange was performed by Claude Sonnet 4
 - **Community Reward Donations:** Novel mechanism allowing community enhancement of LP rewards
 - **Flexible Initial Pricing:** Market-responsive initial liquidity provision with custom ratios
 - **Gas Optimization:** Efficient contract design with global and user indexes.
-- **Liquidity Safeguards:** Permanent locked liquidity (20% STREET supply) with tax-based reserve building
+- **Liquidity Safeguards:** Permanent locked liquidity (20% STREET supply) with immutable 1% exit tax
 - **Transferable Ownership:** Future-proof governance evolution supporting DAO migration
 
 | **Audit Information** | **Details** |
@@ -77,31 +77,24 @@ Our comprehensive security review covers five critical areas:
 
 ## Medium Severity Findings
 
-### [M-01] Parameter Front-Running in Updates
+### [M-01] Immutable Fee Structure
 
-**Contract:** `STREET-market.clar` | **Risk Level:** Medium | **Likelihood:** Low
+**Contract:** `STREET-market.clar` | **Risk Level:** N/A | **Status:** BY DESIGN
 
 **Description:**
-Parameter front-running occurs when malicious actors observe pending parameter change transactions (fee, tax, or revenue updates) in the mempool and execute trades before the changes take effect to extract MEV (Maximal Extractable Value).
+The exchange implements immutable economic parameters as a security feature:
 
-**Attack Example:**
-1. Owner submits `update-exchange-fee(200)` to increase fee from 1% to 2%
-2. Attacker observes pending transaction and front-runs with large swap at 1% fee
-3. Parameter update executes, subsequent users pay 2% fee
-4. Attacker profits from the 1% fee difference
+- **Swap Fee:** Fixed at 1% (immutable)
+- **Exit Tax:** Fixed at 1% (immutable)
+- **Fee Distribution:** All fees go to liquidity providers only (no protocol revenue)
 
-**Risk Mitigation Factors:**
-1. **Bounded Parameters:** All parameters limited to 0.5%-2.00% range, capping maximum MEV extraction
-2. **Anticipated Rates:** Expected operational rates around 1%, limiting practical MEV to ~1% maximum
-3. **Infrequent Changes:** Parameter updates are rare operational events, not regular occurrences
-4. **Incremental Updates:** Owner can implement gradual changes (e.g., 0.25% steps) to minimize MEV impact
-5. **Design Choice:** No time-lock implementation keeps contracts lean and gas-efficient
+**Benefits:**
+1. **No Parameter Front-Running:** Immutable fees eliminate MEV extraction from parameter changes
+2. **Predictable Economics:** Users can trust fees will never change
+3. **Zero Trust Required:** No administrative control over fee structure
+4. **LP Protection:** All fees benefit liquidity providers, never extracted by protocol
 
-**Actual Impact:** Limited MEV opportunity due to bounded parameters and infrequent updates. Maximum realistic extraction is ~1% on affected transactions.
-
-**Mitigation Strategies:**
-- Implement incremental parameter changes (0.25% steps) to minimize MEV impact
-- Establish community communication protocols for parameter updates
+**Design Choice:** Immutability aligns with decentralization principles and eliminates entire class of admin-related attacks.
 
 ## Low Severity & Design-Mitigated Findings
 
@@ -116,10 +109,10 @@ Parameter front-running occurs when malicious actors observe pending parameter c
 ### [L-02] Owner Privilege Structure (Governance Evolution)
 **Contracts:** Multiple | **Risk Level:** Low | **Impact:** Controlled by Design
 
-**Analysis:** Owner privileges are intentionally bounded and designed for governance evolution:
-- **Parameter Limits:** Strict bounds (fees ≤2%, taxes ≤2%)
-- **One-Time Controls:** Kill-switch and treasury locking are irreversible
-- **Evolution Path:** Clear transition to DAO/multi-sig governance
+**Analysis:** Owner privileges are intentionally minimal and designed for governance evolution:
+- **Immutable Economics:** Swap fee (1%) and exit tax (1%) are immutable - cannot be changed
+- **One-Time Controls:** Contract owner transfers are irreversible
+- **Evolution Path:** Clear transition to DAO/multi-sig governance possible
 
 ### [L-03] Circuit Breaker Philosophy (Decentralization Priority)
 
@@ -273,17 +266,12 @@ The protocol showcases several  DeFi innovations:
 | `swap-a-b` | Public | `amount-a` | ✅ **SECURE** |
 | `swap-b-a` | Public | `amount-b` | ✅ **SECURE** |
 | `set-contract-owner` | Public | `new-owner` | ✅ **SECURE** |
-| `set-market-fee` | Public | `amount` | ✅ **SECURE** |
-| `set-market-rev` | Public | `amount` | ✅ **SECURE** |
-| `set-market-tax` | Public | `amount` | ✅ **SECURE** |
-| `set-treasury-address` | Public | `new-treasury` | ✅ **SECURE** |
-| `set-treasury-locked` | Public | None | ✅ **SECURE** |
+| `swap-a-b` | Public | `amount-a` | ✅ **SECURE** |
+| `swap-b-a` | Public | `amount-b` | ✅ **SECURE** |
 | `transformer` | Private | `token`, `amount`, `recipient` | ✅ **SECURE** |
 | `get-blocks` | Read-only | None | ✅ **SECURE** |
 | `get-contract-owner` | Read-only | None | ✅ **SECURE** |
 | `get-market-info` | Read-only | None | ✅ **SECURE** |
-| `get-treasury-address` | Read-only | None | ✅ **SECURE** |
-| `get-treasury-locked` | Read-only | None | ✅ **SECURE** |
 
 ### STREET Rewards Contract (`STREET-rewards.clar`)
 

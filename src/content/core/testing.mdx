@@ -73,10 +73,11 @@ Each test validates actual blockchain state rather than reiterating expected val
 - Test files: 4 (`CREDIT-mint`, `CREDIT-burn`, `transfer`, ownership)
 
 ### Exchange Contract
-- Contract: `exchange.clar`
-- Functions: 16 (liquidity operations, swaps, parameters, treasury)
+- Contract: `exchange.clar` (or `street-market.clar` in devnet)
+- Functions: 11 (liquidity operations, swaps, read-only queries)
+- Immutable: 1% swap fee, 1% exit tax (all fees benefit liquidity providers)
 - Error codes: 7 (initialization, amounts, authorization, calculations)
-- Test files: 12 (liquidity operations, swaps, parameters, read-only, scenarios)
+- Test files: Liquidity operations, swaps, read-only, scenarios
 
 ### Genesis Contract
 - Contract: `genesis.clar`
@@ -165,27 +166,7 @@ All tests execute in isolated simnet environments with fresh state per test case
 - `ERR_ZERO_AMOUNT - SWAP-B-A (700)` - Zero amount B
 - `ERR_INVALID_AMOUNT - SWAP-B-A (711)` - Invalid calculation
 
-**`set-exchange.test.ts` (12 tests)**
-- `SET EXCHANGE FEE PASS` - Fee modification
-- `SET EXCHANGE REV PASS` - Revenue modification
-- `SET EXCHANGE TAX PASS` - Tax modification
-- `ERR_NOT_CONTRACT_OWNER - SET EXCHANGE FEE (701)` - Unauthorized fee
-- `ERR_INVALID_AMOUNT - SET EXCHANGE FEE HIGH (711)` - Fee too high
-- `ERR_INVALID_AMOUNT - SET EXCHANGE FEE LOW (711)` - Fee too low
-- `ERR_NOT_CONTRACT_OWNER - SET EXCHANGE REV (701)` - Unauthorized revenue
-- `ERR_INVALID_AMOUNT - SET EXCHANGE REV HIGH (711)` - Revenue too high
-- `ERR_INVALID_AMOUNT - SET EXCHANGE REV LOW (711)` - Revenue too low
-- `ERR_NOT_CONTRACT_OWNER - SET EXCHANGE TAX (701)` - Unauthorized tax
-- `ERR_INVALID_AMOUNT - SET EXCHANGE TAX HIGH (711)` - Tax too high
-- `ERR_INVALID_AMOUNT - SET EXCHANGE TAX LOW (711)` - Tax too low
-
-**`set-treasury.test.ts` (6 tests)**
-- `SET TREASURY ADDRESS PASS` - Address modification
-- `SET TREASURY LOCKED PASS` - Lock status modification
-- `ERR_NOT_TREASURY - SET TREASURY ADDRESS (706)` - Unauthorized address
-- `ERR_LOCKED_TREASURY - SET TREASURY ADDRESS (707)` - Locked treasury
-- `ERR_NOT_TREASURY - SET TREASURY LOCKED (706)` - Unauthorized lock
-- `ERR_LOCKED_TREASURY - SET TREASURY LOCKED (707)` - Already locked
+**Note:** Fee and tax parameters are immutable (1% each). No parameter-setting functions exist in the contract.
 
 **`liquidity-scenarios.test.ts` (1 test)**
 - `PROVIDE INITIAL LIQUIDITY, REMOVAL ALL LIQUIDITY, PROVIDE LIQUIDITY` - Scenario testing
@@ -193,44 +174,6 @@ All tests execute in isolated simnet environments with fresh state per test case
 **`exchange-read-only.test.ts` (2 tests)**
 - `GET BLOCKS PASS` - Block heights
 - `GET EXCHANGE INFO` - Exchange state
-
-### Genesis Contract
-
-**Contract:** `genesis.clar` - 22 Tests
-
-**`genesis-contribute.test.ts` (3 tests)**
-- `GENESIS CONTRIBUTE PASS` - WELSH contribution
-- `ERR_NOT_ACTIVE_FUND (502)` - Inactive contribution phase
-- `ERR_ZERO_AMOUNT (500)` - Zero amount
-
-**`genesis-claim.test.ts` (3 tests)**
-- `GENESIS CLAIM PASS` - Complete LGE claim flow
-- `ERR_NOT_ACTIVE_FUND (502)` - Inactive claim phase
-- `ERR_ZERO_AMOUNT (500)` - Zero balance
-
-**`genesis-withdrawal.test.ts` (3 tests)**
-- `GENESIS WITHDRAWAL PASS` - Owner withdrawal
-- `ERR_ZERO_AMOUNT (500)` - Zero balance
-- `ERR_NOT_CONTRACT_OWNER (501)` - Non-owner
-
-**`set-genesis.test.ts` (4 tests)**
-- `SET CLAIM ACTIVE PASS` - Phase toggle
-- `ERR_NOT_CONTRACT_OWNER (501)` - Unauthorized claim toggle
-- `SET CONTRIBUTE ACTIVE PASS` - Phase toggle
-- `ERR_NOT_CONTRACT_OWNER (501)` - Unauthorized contribute toggle
-
-**`genesis-read-only.test.ts` (5 tests)**
-- `GET BLOCKS PASS` - Block heights
-- `GET CLAIM ACTIVE` - Claim phase status
-- `GET CONTRIBUTE ACTIVE` - Contribution phase status
-- `GET TOTAL CONTRIBUTION` - Total WELSH contributed
-- `GET USER BALANCE` - User balance and claims
-
-**`setup-genesis.test.ts` (4 tests)**
-- `SETUP GENESIS PASS` - Genesis state setup
-- `GENESIS TRANSFORMER PASS` - Token transfer utility
-- `ERR_NOT_AUTHORIZED - GENESIS TRANSFORMER` - Unauthorized transfer
-- `GENESIS SET CONTRACT OWNER` - Ownership transfer
 
 ### Rewards Contract
 

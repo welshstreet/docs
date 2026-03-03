@@ -5,14 +5,14 @@
 Welsh Street utilizes Uniswap V2-style LP token model  This design choice creates significant advantages over existing Stacks exchanges:
 
 
-The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution for protocol operations. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
+The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution to liquidity providers. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
 
 ## Contract Architecture
 
-The exchange maintains dual reserve pools and implements a **two-tier fee system** that supports both liquidity provider distributions and protocol operations:
+The exchange maintains dual reserve pools and implements a **fee system** where all fees go directly to liquidity providers:
 
-1. **Fee Component**: Goes directly to liquidity providers through the distribution system
-2. **Revenue Component**: Funds protocol operations for development and maintenance
+- **Swap Fees**: All trading fees are transferred to the rewards contract and distributed to liquidity providers
+- **No Protocol Revenue**: The exchange has no income stream; all fees benefit liquidity providers
 
 ## Core Swap Functions
 
@@ -27,10 +27,8 @@ Exchanges WELSH tokens for STREET tokens using constant product AMM mechanics wi
     (res-b (var-get reserve-b))
     (lock-a (var-get locked-a))
     (lock-b (var-get locked-b))
-    (fee-total (/ (* amount-a (+ (var-get fee) (var-get rev))) BASIS))
-    (rev-a (/ (* amount-a (var-get rev)) BASIS))
     (fee-a (/ (* amount-a (var-get fee)) BASIS))
-    (amount-a-net (- amount-a fee-total))
+    (amount-a-net (- amount-a fee-a))
     (num (* amount-a-net res-b))
     (den (+ res-a amount-a-net))
     (amount-b (/ num den))
@@ -39,13 +37,11 @@ Exchanges WELSH tokens for STREET tokens using constant product AMM mechanics wi
     (res-b-new (- res-b amount-b-net))
     (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
     (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
-    (treasury (var-get treasury-address))
   )
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
       (asserts! (> amount-b-net u0) ERR_INVALID_AMOUNT)
       (try! (contract-call? .WELSHcorgicoin transfer amount-a tx-sender .exchange none))
-      (try! (transformer .WELSHcorgicoin rev-a treasury))
       (try! (transformer .WELSHcorgicoin fee-a .rewards))
       (try! (transformer .STREET amount-b-net tx-sender))
       (try! (contract-call? .rewards update-rewards-a fee-a))
@@ -60,8 +56,7 @@ Exchanges WELSH tokens for STREET tokens using constant product AMM mechanics wi
         res-a: res-a,
         res-a-new: res-a-new,
         res-b: res-b,
-        res-b-new: res-b-new,
-        rev-a: rev-a })
+        res-b-new: res-b-new })
       )
     )
   )
@@ -78,8 +73,7 @@ amount-b = (amount-a-net * res-b) / (res-a + amount-a-net)
 ```
 
 **Fee Distribution:**
-- **Fee Component (`fee-a`)**: `(amount-a * fee) / BASIS` → Sent to distribution contract for liquidity providers
-- **Revenue Component (`rev-a`)**: `(amount-a * rev) / BASIS` → Sent to treasury address for protocol operations
+- **Fee Component (`fee-a`)**: `(amount-a * fee) / BASIS` → All fees sent to rewards contract for liquidity provider distribution
 - **Net Input**: `amount-a-net = amount-a - fee-total` → Added to WELSH reserves
 
 **Returns:**
@@ -88,7 +82,6 @@ amount-b = (amount-a-net * res-b) / (res-a + amount-a-net)
 - `fee-a`: WELSH tokens allocated to liquidity provider rewards
 - `res-a`/`res-a-new`: WELSH reserve amounts (before/after swap)
 - `res-b`/`res-b-new`: STREET reserve amounts (before/after swap)
-- `rev-a`: WELSH tokens sent to treasury
 
 **Requirements:**
 - Input amount must be greater than zero
@@ -143,19 +136,6 @@ price-impact = 1 - (output-amount / (input-amount * current-rate))
 - **High Precision**: 9-decimal precision prevents rounding losses
 - **Automatic Updates**: No manual intervention required for token distribution
 
-### Treasury Integration
-
-**Protocol Revenue Flow:**
-```clarity
-;; Revenue allocation to treasury
-(try! (transformer .WELSHcorgicoin rev-a treasury))
-```
-
-**Treasury Features:**
-- **Configurable Address**: Treasury address can be updated by current treasury
-- **Lock Protection**: Treasury can be permanently locked to prevent changes
-- **Multi-Token Support**: Receives both WELSH and STREET tokens from swaps
-
 ## Error Handling
 
 ### Error Constants
@@ -196,8 +176,7 @@ Users should implement slippage tolerance in their applications by:
 **Fee Impact on Reserves:**
 Fees are extracted before the constant product calculation, ensuring:
 1. Liquidity providers receive genuine rewards
-2. Protocol receives sustainable revenue
-3. AMM mechanics remain mathematically sound
+2. AMM mechanics remain mathematically sound
 
 ### Arbitrage Resistance
 
@@ -215,9 +194,10 @@ The constant product curve creates natural arbitrage opportunities that:
 - Both swap functions are publicly accessible
 - No special permissions required for swapping
 
-**Administrative Functions:**
-- Fee/revenue rate updates restricted to contract owner
-- Treasury management restricted to treasury address
+**Immutable Parameters:**
+- Swap fee fixed at 1% (immutable)
+- Exit tax fixed at 1% (immutable)
+- All fees benefit liquidity providers only
 
 ### Economic Security
 
@@ -227,8 +207,8 @@ The constant product curve creates natural arbitrage opportunities that:
 
 **Liquidity Protection:**
 - Constant product formula prevents reserve depletion
-- Minimum fee rates ensure sustainable rewards
-- Maximum fee rates prevent excessive extraction
+- Immutable 1% fee ensures sustainable rewards
+- All fees distributed to liquidity providers
 
 ## Usage Examples
 
@@ -239,10 +219,10 @@ The constant product curve creates natural arbitrage opportunities that:
 (contract-call? .exchange swap-a-b u1000000000) ;; 1,000 tokens (6 decimals)
 
 ;; Expected behavior:
-;; 1. Deducts 2% total fees (20 WELSH tokens at default rates)
-;; 2. Uses 980 WELSH for constant product calculation
+;; 1. Deducts 1% fee (10 WELSH tokens)
+;; 2. Uses 990 WELSH for constant product calculation
 ;; 3. Returns calculated STREET tokens to user
-;; 4. Distributes 10 WELSH to LP rewards, 10 WELSH to treasury
+;; 4. Distributes 10 WELSH to liquidity providers via rewards contract
 ```
 
 ### Basic STREET → WELSH Swap
@@ -252,10 +232,10 @@ The constant product curve creates natural arbitrage opportunities that:
 (contract-call? .exchange swap-b-a u100000000000) ;; 100,000 tokens (6 decimals)
 
 ;; Expected behavior:
-;; 1. Deducts 2% total fees (2,000 STREET tokens at default rates)
-;; 2. Uses 98,000 STREET for constant product calculation
+;; 1. Deducts 1% fee (1,000 STREET tokens)
+;; 2. Uses 99,000 STREET for constant product calculation
 ;; 3. Returns calculated WELSH tokens to user
-;; 4. Distributes 1,000 STREET to LP rewards, 1,000 STREET to treasury
+;; 4. Distributes 1,000 STREET to liquidity providers via rewards contract
 ```
 
 
@@ -266,21 +246,17 @@ The constant product curve creates natural arbitrage opportunities that:
 
 **Purpose**: Shared trading fees distributed to liquidity providers through the distribution contract.
 
-**Destination**: Transferred directly to the `.rewards` contract - inaccessible to deployer/treasury.
+**Destination**: Transferred directly to the `.rewards` contract and distributed to liquidity providers.
 
 **Implementation in Swaps**:
 
 ```clarity
 (fee-a (/ (* amount-a (var-get fee)) BASIS))
-(fee-total (/ (* amount-a (+ (var-get fee) (var-get rev))) BASIS))
 
 ;; Fee distribution in swap-a-b
-(if (> fee-total u0)
-    (begin
-        (try! (transformer .WELSHcorgicoin fee-a .rewards))  ;; Fee goes to rewards
-        (try! (contract-call? .rewards update-rewards-a fee-a))
-    ) true)
+(try! (transformer .WELSHcorgicoin fee-a .rewards))  ;; Fee goes to rewards
+(try! (contract-call? .rewards update-rewards-a fee-a))
 ```
 
-**Security**: These funds are permanently allocated to LP distributions and cannot be accessed by the treasury or contract owner.
+**Security**: These funds are permanently allocated to LP distributions and cannot be accessed by the contract owner.
 
