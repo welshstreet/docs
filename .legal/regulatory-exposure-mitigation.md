@@ -848,6 +848,102 @@ The landing page content aligns with language patterns in recent SEC enforcement
 
 ---
 
+## 6.7 Marketing Language & Humor - Acceptable Use
+
+### 6.7.1 Guidelines
+
+Humor, cultural references, and marketing personality are acceptable and encouraged in the Welsh Street Exchange frontend and documentation, provided they do not:
+
+1. Make financial return promises or profit expectations
+2. Use securities law forbidden words (see list below)
+3. Imply guarantees or certainty regarding value appreciation
+
+### 6.7.2 Acceptable Marketing Examples
+
+**✅ COMPLIANT Marketing Language:**
+- "There's credit. Then there's Street Credit." (playful brand positioning)
+- Cultural references to Welsh Corgi community
+- Playful language about protocol mechanics
+- Branding personality and voice
+- Meme culture references (without price predictions)
+- "You become a true community legend" (social recognition, non-financial)
+- "Everyone will remember your name" (social recognition, non-financial)
+
+**Key Principle**: Describe protocol mechanics factually while maintaining brand personality. Fun and humor do not create securities risk when separated from investment/profit framing.
+
+### 6.7.3 Forbidden Securities Law Terms
+
+**❌ PROHIBITED in all marketing and documentation:**
+
+**Profit-Expectation Terms:**
+- earn / earning / earnings
+- harvest / harvesting
+- accrue / accruing
+- entitled to
+- profit from
+- maximize returns
+- generate revenue
+- grow your portfolio
+- expand your position
+
+**Investment Framing:**
+- investment opportunity
+- investment strategy
+- financial return
+- passive income
+- yield generation
+- ROI / return on investment
+
+**Guarantee/Certainty Language:**
+- guaranteed returns
+- risk-free
+- can't lose money
+- assured profit
+- certain appreciation
+
+**Price Prediction:**
+- "going to the moon"
+- "100x potential"
+- specific future price targets
+- value appreciation promises
+
+### 6.7.4 Compliant Alternative Phrasing
+
+| Prohibited | Compliant Alternative |
+|------------|----------------------|
+| "Earn rewards" | "Claim rewards" / "Execute claim function" |
+| "Harvest yield" | "Claim available rewards" |
+| "Generate passive income" | "Rewards become claimable over time" |
+| "Maximize returns" | "Optimize liquidity position" |
+| "Investment opportunity" | "Protocol participation" |
+| "Entitled to rewards" | "Rewards become available" / "May claim rewards" |
+
+### 6.7.5 Regulatory Basis
+
+**FTC Consumer Protection (Section 5):**
+- Prohibits deceptive profit claims
+- Requires material risk disclosure
+- Forbids misleading advertising
+
+**SEC Securities Law (Howey Test - Element 3):**
+- Avoid language creating "expectation of profit"
+- Factual mechanics descriptions are permissible
+- Marketing personality acceptable if separated from financial promises
+
+### 6.7.6 Implementation Status
+
+**Current Compliance:**
+- ✅ Modals use compliant language (lock/burn modals reviewed)
+- ✅ Brand personality maintained without securities violations
+- ✅ Social recognition rewards (non-financial) used appropriately
+
+**Ongoing Vigilance:**
+- Monitor new content for forbidden terms
+- Review marketing materials before publication
+- Maintain separation between fun/personality and financial expectations
+
+---
+
 ## 7. Final Compliance Status
 
 ### 7.1 Overall Regulatory Risk Score

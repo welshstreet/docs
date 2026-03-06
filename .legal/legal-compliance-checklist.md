@@ -422,6 +422,34 @@ APR/APY figures are estimates only
 
 ✅ **Current Status**: Documentation avoids prohibited claims
 
+### Marketing Language & Humor - Acceptable Use
+
+**Guideline**: Humor, cultural references, and marketing personality are acceptable and encouraged, provided they do not:
+1. Make financial return promises or profit expectations
+2. Use securities law forbidden words (see list below)
+3. Imply guarantees or certainty regarding value
+
+**✅ Acceptable Marketing Examples**:
+- "There's credit. Then there's Street Credit."
+- Cultural references to Welsh Corgi community
+- Playful language about protocol mechanics
+- Branding personality and voice
+- Meme culture references (without price predictions)
+
+**❌ Forbidden Securities Law Terms** (avoid in marketing):
+- earn / earning / earnings
+- harvest / harvesting
+- accrue / accruing
+- entitled to
+- grow your portfolio
+- expand your position
+- generate revenue
+- investment opportunity
+- profit from
+- maximize returns
+
+**Key Principle**: Describe protocol mechanics factually while maintaining brand personality. Fun and humor do not create securities risk when separated from investment/profit framing.
+
 ### State Consumer Protection Statutes
 
 **Issue**: Each state has its own consumer protection act (e.g., California's Unfair Competition Law)
