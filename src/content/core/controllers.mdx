@@ -118,8 +118,8 @@ The `street-controller` contract collects a 1,000 WELSH donation per mint as ant
   (let (
       (user-welsh (unwrap-panic (contract-call? .welshcorgicoin get-balance tx-sender)))
       (count (+ (var-get mint-count) u1))
-      (is-jackpot (is-eq (mod count u21) u0))
-      (mint-amount (if is-jackpot JACKPOT MINT_STREET))
+      (is-milestone (is-eq (mod count u21) u0))
+      (mint-amount (if is-milestone MINT_BONUS MINT_STREET))
     )
     (begin
       (asserts! (>= user-welsh DONATE_WELSH) ERR_YOU_POOR)
