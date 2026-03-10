@@ -1,8 +1,6 @@
 # Welsh Street App Compliance Checklist
 **App-Specific Compliance Review**  
-**Last Updated**: March 8, 2026  
-**Status**: Pre-Launch Review
-
+**Last Updated**: March 10, 2026
 ---
 
 ## Welsh Street Protocol Overview
@@ -87,6 +85,33 @@
 
 ---
 
+## Revenue Model: ✅ COMPLIANT (No Developer Extraction)
+
+**Our Implementation** (street-market.clar):
+- `FEE u100` (1%) → street-rewards.clar (distributed to all CREDIT holders)
+- `TAX u100` (1%) → locked liquidity (anti-rug, increases available liquidity over time)
+- **Zero developer extraction from swaps**
+
+**Compliance Status**:
+- ✅ All swap fees benefit liquidity providers
+- ✅ No transaction-based revenue to developers
+- ✅ Not operating as money transmitter
+- ✅ Software provider model, not commercial intermediary
+
+**Developer Revenue Sources**:
+- Token holdings (market participant, same rights as any user)
+- Potential LP position (earning fees like other CREDIT holders, no privileged access)
+
+**Money Transmitter Risk**: ✅ ELIMINATED - No per-swap revenue extraction
+
+**Securities Risk (Element 4)**: ✅ MITIGATED
+- Protocol fully functional and immutable post-deployment
+- Public blockchain - direct contract access, alternative UIs possible
+- No roadmap, no promises of future development
+- Social media describes existing functionality only
+
+---
+
 ## Genesis Mint Parameters (Street Controller)
 
 **Contract**: street-controller.clar
@@ -115,16 +140,16 @@
 | Parameter | Value | Immutable |
 |-----------|-------|-----------|
 | EMISSION_AMOUNT | 10,000 STREET/block | ✅ |
-| BOUNTY | 0.1% (10 BPS) to caller | ✅ |
-| Eligibility | 1 BPS of CREDIT supply (0.01%) | ✅ |
+| Eligibility | 0.1% of CREDIT supply | ✅ |
 | Interval | Per Bitcoin block | ✅ (external) |
+| Distribution | 100% → street-rewards.clar | ✅ |
 
 **Execution**: Permissionless (any CREDIT holder meeting threshold)
 
 **Legal Position**:
 - No developer privileged access
 - Algorithmic, predetermined schedule
-- Small bounty = operational compensation (gas), not investment return
+- Caller receives no compensation (pays gas)
 
 ---
 
@@ -219,13 +244,11 @@
    - Remove all forbidden securities terms
    - Rewrite About, Pitch, Exchange, Tokenomics sections
    - Maintain brand voice WITHOUT profit framing
-   - Timeline: 1-2 days
 
 2. **Verify Vercel OFAC Geo-Blocking** 🟡
    - Check dashboard: Project Settings → Firewall
    - Confirm "Block OFAC-Sanctioned Countries" active
    - Screenshot for records
-   - Timeline: 15 minutes
 
 ### Recommended (Within 30 Days)
 
@@ -234,13 +257,11 @@
    - Federal MSB classification analysis
    - State-by-state licensing assessment
    - Cost: $30k-$50k
-   - Timeline: 2-4 weeks
 
 4. **IRS Tax Reporting Analysis** 🟡
    - Monitor final broker regulations
    - Obtain tax counsel opinion
    - Cost: $20k-$50k
-   - Timeline: 2-4 weeks
 
 ---
 
@@ -321,9 +342,8 @@
 
 **Emissions**:
 - 10k STREET per Bitcoin block
-- 0.1% bounty to caller
-- 99.9% to street-rewards.clar
-- Eligibility: 1 BPS of CREDIT supply
+- 100% to street-rewards.clar (no caller bounty)
+- Eligibility: 0.1% of CREDIT supply
 
 ---
 

@@ -1,6 +1,6 @@
 # DeFi Legal Framework
 **General Legal Requirements for Decentralized Exchanges**  
-**Last Updated**: March 8, 2026
+**Last Updated**: March 10, 2026
 
 ---
 
@@ -25,6 +25,37 @@ This document outlines general legal compliance areas affecting DeFi frontends a
 - Neutral messaging (no profit promises)
 - Decentralized execution (no developer reliance)
 
+### Element 4: Swap Fees as Revenue
+
+**Critical Distinction**: Collecting swap fees is not inherently a securities violation. The issue is whether fees prove users depend on developer efforts for value.
+
+**Legal Standard** (United Housing Foundation v. Forman, 1975):
+- **Ministerial tasks**: Routine operations, maintenance, infrastructure → NOT "efforts of others"
+- **Entrepreneurial efforts**: Active management, development affecting value → Triggers Element 4
+
+**Lower Risk Scenarios**:
+- Protocol is fully functional and immutable
+- Fees fund operational costs only (hosting, security, compliance)
+- Alternative access methods exist (public blockchain, other UIs)
+- No roadmap or promises of value-driving development
+- Social media promotes existing functionality, not future features
+- Fees are algorithmic/protocol-generated, not developer-controlled
+
+**Higher Risk Scenarios**:
+- Users bought expecting team to build roadmap features
+- Fees fund development that increases value
+- Developer is sole practical access point
+- Marketing emphasizes team expertise/vision
+- Social posts promise future updates that will drive value
+
+**SEC Digital Asset Framework (2019)**: "Does the purchaser reasonably expect [you] to undertake efforts to promote value or develop functionality?"
+
+**Defensive Position**:
+- Operational fees for ministerial infrastructure tasks
+- Immutable protocol (shutdown doesn't break functionality)
+- Neutral social media (describe what exists, not what's coming)
+- No promises of future value-driving work
+
 ---
 
 ## 2. Money Transmission (MSB/State Licenses)
@@ -44,6 +75,19 @@ This document outlines general legal compliance areas affecting DeFi frontends a
 - Non-custodial architecture
 - No fiat on/off ramps
 - No access to user funds
+
+### Revenue Extraction = Money Transmitter
+
+**CRITICAL**: Transaction-based revenue triggers MSB classification, even if immutable.
+
+**DO NOT extract per-swap revenue to developer wallets** - This creates money transmitter liability regardless of immutability.
+
+**Compliant Revenue Models**:
+1. **Token holdings** - Hold/sell tokens on secondary markets as market participant
+2. **LP position** - Provide liquidity, earn fees like other users (no privileged treatment)
+3. **Alternative services** - Consulting, grants, unrelated revenue streams
+
+**Key Distinction**: Holding tokens = market participant. Extracting per-swap revenue = money transmitter.
 
 ---
 
