@@ -25,36 +25,11 @@ This document outlines general legal compliance areas affecting DeFi frontends a
 - Neutral messaging (no profit promises)
 - Decentralized execution (no developer reliance)
 
-### Element 4: Swap Fees as Revenue
-
-**Critical Distinction**: Collecting swap fees is not inherently a securities violation. The issue is whether fees prove users depend on developer efforts for value.
-
-**Legal Standard** (United Housing Foundation v. Forman, 1975):
-- **Ministerial tasks**: Routine operations, maintenance, infrastructure → NOT "efforts of others"
-- **Entrepreneurial efforts**: Active management, development affecting value → Triggers Element 4
-
-**Lower Risk Scenarios**:
-- Protocol is fully functional and immutable
-- Fees fund operational costs only (hosting, security, compliance)
-- Alternative access methods exist (public blockchain, other UIs)
-- No roadmap or promises of value-driving development
-- Social media promotes existing functionality, not future features
-- Fees are algorithmic/protocol-generated, not developer-controlled
-
-**Higher Risk Scenarios**:
-- Users bought expecting team to build roadmap features
-- Fees fund development that increases value
-- Developer is sole practical access point
-- Marketing emphasizes team expertise/vision
-- Social posts promise future updates that will drive value
-
-**SEC Digital Asset Framework (2019)**: "Does the purchaser reasonably expect [you] to undertake efforts to promote value or develop functionality?"
-
-**Defensive Position**:
-- Operational fees for ministerial infrastructure tasks
-- Immutable protocol (shutdown doesn't break functionality)
-- Neutral social media (describe what exists, not what's coming)
-- No promises of future value-driving work
+**Key Protocol Feature**:
+- 100% of swap fees distributed to liquidity providers (LPs)
+- No developer revenue extraction from swaps
+- LPs can claim fees anytime without withdrawing liquidity (no lock-up)
+- Traditional AMMs require LP withdrawal to claim fees; Welsh Street allows continuous claims while maintaining LP position
 
 ---
 

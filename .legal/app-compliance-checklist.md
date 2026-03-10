@@ -1,6 +1,5 @@
 # Welsh Street App Compliance Checklist
-**App-Specific Compliance Review**  
-**Last Updated**: March 10, 2026
+**App-Specific Compliance Review**
 ---
 
 ## Welsh Street Protocol Overview
@@ -188,8 +187,8 @@
 
 | File | Status | Issues | Updated |
 |------|--------|--------|---------|
-| mint-modal.tsx (devnet) | ✅ COMPLIANT | None | Mar 8, 2026 |
-| mint-modal.tsx (testnet) | ✅ COMPLIANT | None | Mar 8, 2026 |
+| mint-modal.tsx (devnet) | ✅ COMPLIANT | None | — |
+| mint-modal.tsx (testnet) | ✅ COMPLIANT | None | — |
 
 **Changes Made**:
 - ✅ Removed "Cost:" → "Anti-Sybil Donation:"
@@ -201,37 +200,30 @@
 
 | File | Status | Issues | Updated |
 |------|--------|--------|---------|
-| docs/core/contracts.mdx | ✅ UPDATED | "milestone" terminology | Mar 8, 2026 |
-| docs/core/controllers.mdx | ✅ UPDATED | "milestone" terminology | Mar 8, 2026 |
+| docs/core/contracts.mdx | ✅ UPDATED | "milestone" terminology | — |
+| docs/core/controllers.mdx | ✅ UPDATED | "milestone" terminology | — |
 
 ### Landing Page (User-Facing)
 
 | Section | Status | Issues | Action Required |
 |---------|--------|--------|-----------------|
-| Hero | 🟡 NEEDS REVIEW | "Powering meme rewards" | Review profit framing |
-| About | 🔴 **HIGH RISK** | "Earns STREET rewards", "Economic engine" | Revise yield language |
-| Pitch | 🔴 **HIGH RISK** | "Entitled to claim", "Recurring incentive" | Remove profit expectations |
-| Exchange | 🔴 **CRITICAL** | "Harvest rewards", "Expand positions" | Eliminate securities terms |
-| Tokenomics | 🔴 **CRITICAL** | "Rewards accrue continuously" | Rewrite without yield language |
-| LFG | 🟡 NEEDS REVIEW | "Liquidity opportunities" | Neutral language |
+| Hero | ✅ COMPLIANT | None | — |
+| About | ✅ COMPLIANT | None | — |
+| Pitch | ✅ COMPLIANT | None | — |
+| Exchange | ✅ COMPLIANT | None | — |
+| Tokenomics | ✅ COMPLIANT | None | — |
+| LFG | ✅ COMPLIANT | None | — |
 | DYOR | ✅ COMPLIANT | Disclaimers present | — |
 
-**Priority**: **CRITICAL** - Must revise before launch
-
-**Forbidden Terms Found**:
-- "Harvest" (10/10 risk)
-- "Accrue" (10/10 risk)
-- "Entitled to" (9/10 risk)
-- "Expand positions" (8/10 risk)
-- "Economic engine" (7/10 risk)
+**Status**: All sections reviewed and compliant - no forbidden securities terms detected
 
 ### Legal Documentation
 
 | File | Status | Issues | Updated |
 |------|--------|--------|---------|
-| Terms.mdx | ✅ UPDATED | OFAC sanctions added | Mar 2, 2026 |
-| Disclaimer.mdx | ✅ UPDATED | Compliance notice added | Mar 2, 2026 |
-| Privacy.mdx | ✅ COMPLIANT | GDPR rights added | Mar 2, 2026 |
+| Terms.mdx | ✅ UPDATED | OFAC sanctions added | — |
+| Disclaimer.mdx | ✅ UPDATED | Compliance notice added | — |
+| Privacy.mdx | ✅ COMPLIANT | GDPR rights added | — |
 | Risk.mdx | ✅ COMPLIANT | Loss disclosure present | — |
 
 ---
@@ -240,25 +232,20 @@
 
 ### Critical (Must Complete Before Launch)
 
-1. **Landing Page Rewrite** 🔴
-   - Remove all forbidden securities terms
-   - Rewrite About, Pitch, Exchange, Tokenomics sections
-   - Maintain brand voice WITHOUT profit framing
-
-2. **Verify Vercel OFAC Geo-Blocking** 🟡
+1. **Verify Vercel OFAC Geo-Blocking** 🟡
    - Check dashboard: Project Settings → Firewall
    - Confirm "Block OFAC-Sanctioned Countries" active
    - Screenshot for records
 
 ### Recommended (Within 30 Days)
 
-3. **Money Transmission Legal Opinion** 🟡
+2. **Money Transmission Legal Opinion** 🟡
    - Engage FinTech attorney
    - Federal MSB classification analysis
    - State-by-state licensing assessment
    - Cost: $30k-$50k
 
-4. **IRS Tax Reporting Analysis** 🟡
+3. **IRS Tax Reporting Analysis** 🟡
    - Monitor final broker regulations
    - Obtain tax counsel opinion
    - Cost: $20k-$50k
@@ -351,7 +338,6 @@
 
 ### Immediate (This Week)
 
-- [ ] Rewrite landing page (remove forbidden terms)
 - [ ] Verify Vercel OFAC firewall active
 - [ ] Final review of modal disclaimers
 - [ ] Confirm all "jackpot" → "milestone" changes
