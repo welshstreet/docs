@@ -92,7 +92,7 @@ The zero debt cumulative system ensures fair distribution with immediate partici
 ```clarity
 (define-public (claim-rewards)
   (let (
-    (balance-lp (unwrap! (contract-call? .CREDIT get-balance tx-sender) ERR_BALANCE_NOT_AVAILABLE))
+    (balance-lp (unwrap! (contract-call? .CREDIT get-balance tx-sender) ERR_BALANCENOT_AVAILABLE))
     (info (default-to {
       balance-lp: u0, block-lp: u0, debt-a: u0, debt-b: u0, index-a: u0, index-b: u0}
       (map-get? user-rewards { account: tx-sender })))
@@ -461,7 +461,7 @@ Reset Function Logic in the **Rewards** contract:
 ```clarity
 (define-public (update-user-rewards (user principal))
   (let (
-    (current-lp-balance (unwrap! (contract-call? .CREDIT get-balance user) ERR_BALANCE_NOT_AVAILABLE))
+    (current-lp-balance (unwrap! (contract-call? .CREDIT get-balance user) ERR_BALANCENOT_AVAILABLE))
     (current-global-index-a (var-get global-index-a))
     (current-global-index-b (var-get global-index-b))
     (current-block stacks-block-height)
