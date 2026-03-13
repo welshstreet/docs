@@ -19,7 +19,7 @@ export const metadata = {
 }
 
 // Toggle this to enable/disable maintenance mode
-const MAINTENANCE_MODE = true
+const MAINTENANCE_MODE = false
 
 export default async function RootLayout({ children }) {
   const navbar = (
