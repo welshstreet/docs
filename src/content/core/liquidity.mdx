@@ -46,10 +46,13 @@ The `lock-liquidity` function creates permanently committed base liquidity that 
 
 (define-public (lock-liquidity (amount-a uint))
   (let (
-    (lock-a (var-get locked-a)) ;; locked WELSH
-    (lock-b (var-get locked-b)) ;; locked STREET
-    (res-a  (var-get reserve-a)) ;; reserves WELSH
-    (res-b  (var-get reserve-b)) ;; reserves STREET
+    ;; locked liquidity tracked by contract
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    
+    ;; total liquidity (reserves) tracked by contract
+    (res-a  (var-get reserve-a))
+    (res-b  (var-get reserve-b))
   )
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
@@ -157,28 +160,51 @@ The `provide-liquidity` function enables normal AMM liquidity provision with LP 
     (res-a  (var-get reserve-a))
     (res-b  (var-get reserve-b))
     
-    
+    ;; available liquidity calculated as the invariant of reserve and locked liquidity
     (avail-a (if (>= res-a lock-a) (- res-a lock-a) u0))
     (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
+
+    ;; fetch total-liquidity for ratio calculations
     (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
   )
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
       (asserts! (> total-lp u0) ERR_NOT_INITIALIZED)
       (asserts! (and (> avail-a u0) (> avail-b u0)) ERR_NOT_INITIALIZED)
+
+      ;; liquidity provisions based on available liquidity
       (let (
+
+        ;; calculate amount-b based on pool ratio
         (amount-b (/ (* amount-a avail-b) avail-a))
+
+        ;; hypothetical LP tokens if token-a alone determined the mint
         (lp-from-a (/ (* amount-a total-lp) avail-a))
+
+        ;; hypothetical LP tokens if token-b alone determined the mint
         (lp-from-b (/ (* amount-b total-lp) avail-b))
+        
+        ;; LP minted is the smaller of the two calcs above to ensure LP shares 
+        ;; never over-represent what was deposited
         (amount-lp (if (< lp-from-a lp-from-b) lp-from-a lp-from-b))
       )
         (begin
+          ;; user transfer token-a to liquidity pool
           (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .street-market none))
+
+          ;; user transfer token-b to liquidity pool
           (try! (contract-call? .street-token transfer amount-b tx-sender .street-market none))
+          
+          ;; lp-tokens minted to user based on available liquidity calculations
           (try! (contract-call? .credit-token mint amount-lp))
+          
+          ;; user rewards tracking updated
           (try! (contract-call? .street-rewards increase-rewards tx-sender amount-lp))
+          
+          ;; amounts of token-a and token-b updated in the total reserves
           (var-set reserve-a (+ res-a amount-a))
           (var-set reserve-b (+ res-b amount-b))
+
           (ok { 
             amount-a: amount-a, 
             amount-b: amount-b, 
@@ -200,37 +226,66 @@ The `remove-liquidity` function allows LP token holders to withdraw their liquid
 ```clarity
 (define-public (remove-liquidity (amount-lp uint))
   (let (
+    ;; locked liquidity tracked by contract
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
 
     ;; total liquidity (reserves) tracked by contract
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
-    (lock-a (var-get locked-a))
-    (lock-b (var-get locked-b))
+
+    ;; available liquidity calculated as reserve minus locked
     (avail-a (if (>= res-a lock-a) (- res-a lock-a) u0))
     (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
-    (total-supply-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+
+    ;; fetch total-liquidity for proportional withdrawal
+    (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
   )
     (begin
+      ;; cannot remove zero and pool must be initialized
       (asserts! (> amount-lp u0) ERR_ZERO_AMOUNT)
-      (asserts! (> total-supply-lp u0) ERR_NOT_INITIALIZED)
+      (asserts! (> total-lp u0) ERR_NOT_INITIALIZED)
       (let (
-        (remove-a (/ (* amount-lp avail-a) total-supply-lp))
-        (remove-b (/ (* amount-lp avail-b) total-supply-lp))
+        ;; gross WELSH portion user is entitled to from available pool
+        (remove-a (/ (* amount-lp avail-a) total-lp))
+
+        ;; gross STREET portion user is entitled to from available pool
+        (remove-b (/ (* amount-lp avail-b) total-lp))
+
+        ;; withdrawal tax on WELSH
         (tax-a (/ (* remove-a TAX) BASIS))
+
+        ;; withdrawal tax on STREET
         (tax-b (/ (* remove-b TAX) BASIS))
+
+        ;; net amounts sent back to user after tax
         (amount-a (- remove-a tax-a))
         (amount-b (- remove-b tax-b))
       )
         (begin
+          ;; LP tokens returned from user to pool contract
           (try! (contract-call? .credit-token transfer amount-lp tx-sender .street-market none))
+
+          ;; send net WELSH back to user
           (try! (transformer .welshcorgicoin amount-a tx-sender))
+
+          ;; send net STREET back to user
           (try! (transformer .street-token amount-b tx-sender))
+
+          ;; update user's reward accounting for decreased LP balance
           (try! (contract-call? .street-rewards decrease-rewards tx-sender amount-lp))
+
+          ;; burn the returned LP tokens
           (try! (as-contract (contract-call? .credit-token burn amount-lp)))
+
+          ;; update total reserves to reflect withdrawn net amounts
           (var-set reserve-a (if (>= res-a amount-a) (- res-a amount-a) u0))
           (var-set reserve-b (if (>= res-b amount-b) (- res-b amount-b) u0))
+
+          ;; add tax amounts to permanently locked liquidity
           (var-set locked-a (+ lock-a tax-a))
           (var-set locked-b (+ lock-b tax-b))
+
           (ok {
             amount-a: amount-a,
             amount-b: amount-b,
@@ -246,9 +301,19 @@ The `remove-liquidity` function allows LP token holders to withdraw their liquid
 ```
 </div>
 
+#### Remove Liquidity Tax
+
+The exit tax on liquidity removal using `remove-liquidity` permanently increases protocol locked liquidity reserves. The exit tax is applied uniformly to all withdrawal transactions. The tax amount remains as permanently locked liquidity within the protocol. 
+
+A 1% withdrawal tax is retained in the pool and permanently added to reserves, increasing the invariant (k) and deepening liquidity. This functions as an exit-side stabilization mechanism.
+
+The tax amount is set at contract deployment and immutable. 
+
 ## Locked Liquidity
 
-The Welsh Street Exchange has additional liquidity functionality to give users maximum flexibility. User's may burn liquidity by calling `burn-liquidity` which destroys CREDIT tokens permanently.  The Welsh Street Exchange also allows user to directly lock liquidity by calling `lock-liquidity` and the exchange has a dedicated accounting system to track lock liquidity not typically found in AMMs. The differences between `burn-liquidity` and `lock-liquidity` are detailed below.
+Historically in DeFi, “locked liquidity” has often been narrative rather than math: if a contract only tracks total reserves, there’s no strict on-chain line between what can move and what cannot. Welsh Street instead treats locked liquidity as a hard invariant by tracking locked-a/locked-b separately from reserve-a/reserve-b, and by basing all LP mint/burn operations on available liquidity only (avail = reserves - locked). Because the locked portion never enters the withdrawal math, it is structurally excluded from user exits, giving the pool a clear, verifiable base layer of liquidity that is transparent and enforceable directly on-chain.
+
+Building on this foundation, the Welsh Street Exchange adds two complementary liquidity functions that give users operational flexibility without weakening that locked base. Users may burn liquidity by calling burn-liquidity, which destroys CREDIT tokens permanently, or directly lock liquidity by calling lock-liquidity, which deposits WELSH and STREET into the pool and updates the locked counters tracked on-chain. The differences between burn-liquidity and lock-liquidity are detailed below.
 
 ### Burn Liquidity vs Lock Liquidity
 
@@ -271,96 +336,18 @@ All liquidity provisioning via `provide-liquidity` and `remove-liquidity` are ca
 
 <div className="code-transparent">
 ```clarity
-;; street market onchain liquidity accounting
+;; street market onchain locked liquidity accounting
 
+;; locked liquidity tracked by contract
 (define-data-var locked-a uint u0) ;; Locked WELSH
 (define-data-var locked-b uint u0) ;; Locked STREET
 
-;; reserves = locked + available
+;; total liquidity reserves tracked by contract
 (define-data-var reserve-a uint u0) ;; Total WELSH in contract
 (define-data-var reserve-b uint u0) ;; Total STREET in contract
+
+;; reserves = locked + available
 ```
 </div>
 
 Locked liquidity accumulates from taxes collected on `remove-liquidity` withdrawals and direct deposits to the liquidity pool by utilizing `lock-liquidity`. Protocol-owned liquidity ensures the exchange always has trading depth as tax collection strengthens the permanent liquidity foundation.
-
-### Remove Liquidity Tax
-
-The exit tax on liquidity removal using `remove-liquidity` permanently increases protocol locked liquidity reserves. The exit tax is applied uniformly to all withdrawal transactions. The tax amount remains as permanently locked liquidity within the protocol. 
-
-A 1% withdrawal tax is retained in the pool and permanently added to reserves, increasing the invariant (k) and deepening liquidity. This functions as an exit-side stabilization mechanism.
-
-The tax amount is set at contract deployment and immutable. 
-
-<div className="code-transparent">
-```clarity
-;; remove liquidity with locked liquidity accounting
-
-(define-public (remove-liquidity (amount-lp uint))
-  (let (
-    (res-a (var-get reserve-a))
-    (res-b (var-get reserve-b))
-    (lock-a (var-get locked-a))
-    (lock-b (var-get locked-b))
-
-    ;; available reserves calculated
-    (avail-a (if (>= res-a lock-a) (- res-a lock-a) u0))
-
-    ;; available reserves calculated 
-    (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
-    
-    ;; total lp used for proportion calculations of WELSH and STREET
-    (total-supply-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
-  )
-    (begin
-      (asserts! (> amount-lp u0) ERR_ZERO_AMOUNT)
-      (asserts! (> total-supply-lp u0) ERR_NOT_INITIALIZED)
-      (let (
-
-        ;; removed WELSH calculated from proportion of total CREDIT 
-        (remove-a (/ (* amount-lp avail-a) total-supply-lp))
-
-        ;; removed STREET calculated from proportion of total CREDIT 
-        (remove-b (/ (* amount-lp avail-b) total-supply-lp))
-
-        ;; 1% tax applied to proportion of WELSH
-        (tax-a (/ (* remove-a TAX) BASIS))
-
-        ;; 1% tax applied to proportion of WELSH
-        (tax-b (/ (* remove-b TAX) BASIS))
-
-        ;; tax removed to create net amounts to user
-        (amount-a (- remove-a tax-a))
-        (amount-b (- remove-b tax-b))
-      )
-        (begin
-          (try! (contract-call? .credit-token transfer amount-lp tx-sender .street-market none))
-          
-          ;; net amounts sent to user.  tax amount remains in contract and never leaves
-          (try! (transformer .welshcorgicoin amount-a tx-sender))
-          (try! (transformer .street-token amount-b tx-sender))
-          
-          (try! (contract-call? .street-rewards decrease-rewards tx-sender amount-lp))
-          (try! (as-contract (contract-call? .credit-token burn amount-lp)))
-          (var-set reserve-a (if (>= res-a amount-a) (- res-a amount-a) u0))
-          (var-set reserve-b (if (>= res-b amount-b) (- res-b amount-b) u0))
-          
-          ;; tax added to locked liquidity
-          (var-set locked-a (+ lock-a tax-a))
-          (var-set locked-b (+ lock-b tax-b))
-          
-          (ok {
-            amount-a: amount-a,
-            amount-b: amount-b,
-            amount-lp: amount-lp,
-            tax-a: tax-a,
-            tax-b: tax-b
-          })
-        )
-      )
-    )
-  )
-)
-```
-</div>
-

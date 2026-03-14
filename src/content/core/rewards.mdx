@@ -1,135 +1,73 @@
 import { Callout } from 'nextra/components'
 
-# Distribution System
+# Welsh Street Rewards System
 
-## Overview
+Welsh Street implements a zero debt cumulative distribution system with global index accounting. This type of rewards system is superior in blockchains as it provides fair token distribution to liquidity providers while maintaining system simplicity and gas efficiency. This system provides a superior user experience compared to traditional AMM distribution mechanisms. Key aspects of the system are described below.
 
-The WELSH STREET Exchange implements a zero debt cumulative distribution system with global index accounting that provides fair token distribution to liquidity providers while maintaining system simplicity and gas efficiency. This system eliminates whale manipulation vulnerabilities through join-time snapshots and provides a superior user experience compared to traditional AMM distribution mechanisms.
+## Definitions
 
-## What Makes WELSH STREET Special
+### Cumulative Distribution
 
-Unique Feature: No withdrawal required to claim distributions! Unlike other AMMs where you must burn LP tokens to access distributions, WELSH STREET allows you to:
-- ✅ Keep providing liquidity while claiming distributions
-- ✅ Compound your position without losing accumulated distributions
-- ✅ Maintain your market exposure during distribution claiming
-- ✅ Save on gas costs (no re-deposit transactions needed)
+The cumulative distribution system means distributions can be claimed without withdrawing liquidity. Unlike traditional AMMs where LP tokens must be burned to access distributions, Welsh Street enables users to keep providing liquidity while claiming, compound positions without losing accumulated distributions, and maintain market exposure during distribution claiming.
 
-## Distribution Sources
+### Global Index
 
-WELSH STREET distributions accumulate from two primary sources:
+Rewards are tracked with a single ever‑increasing global index per token. Each user stores a snapshot of that index and their LP balance. Claimable rewards are computed from the difference between the current global index and the user’s stored index. The system only adds to the global indexes; it never iterates over all users to distribute rewards.
 
-### 1. Trading Fee Allocation
-- WELSH Token Swaps: A percentage of swap fees from WELSH → STREET trades
-- STREET Token Swaps: A percentage of swap fees from STREET → WELSH trades
-- Real-time accumulation: Fees are distributed immediately to the distribution pool
+### Zero Debt
 
-### 2. Token Emissions
-- Direct STREET Emissions: STREET tokens allocated directly to the distribution pool
-- Liquidity Allocations: Token emissions to bootstrap and maintain liquidity
-- Protocol Operations: Long-term sustainability through emission schedules
-
-### 3. Contributions & Enhanced Features
-- **Contribution System**: `donate-rewards` unlimited contribution capability with automatic tracking
-- **Emission Processing**: `update-emission-rewards` with epoch-based protection
-- **Cleanup System**: Automatic detection and redistribution of untracked tokens
-- **Perfect Accounting**: Complete tracking of distributed vs. claimed tokens
-- **Dust Recovery**: Intelligent cleanup of small amounts to prevent token lock
-
-## Reward System Integration
-
-All liquidity functions that change a user's LP token balance automatically update their reward position:
-
-**When Reward Updates Occur**:
-- ✅ **`provide-liquidity`**: User gains LP tokens → reward rate increases
-- ✅ **`initial-liquidity`**: Owner gains LP tokens → reward position established
-- ✅ **`remove-liquidity`**: User loses LP tokens → reward rate decreases
-- ✅ **`burn-liquidity`**: User loses LP tokens → reward rate decreases
-- ❌ **`lock-liquidity`**: No LP tokens created → no reward impact
-
-<Callout type="info">Always claim rewards before changing liquidity positions</Callout>
-
-## Technical Implementation
+When a user joins the system or their position is (re)registered, their `debt-a` and `debt-b` values start at `0`. Users do not begin with an artificial backlog that must be worked off. Instead, each user’s snapshot is taken at the current global index, and any future increase in that index is attributable to that user. New LPs therefore begin earning immediately, and claims can be made without withdrawing, because the system never places a user in a negative or locked “debt” state relative to future distributions.
 
 ### Core Data Structure
 
 The rewards system tracks each user's position and entry timing through a cumulative index system with zero debt initialization:
 
 ```clarity
-;; Global cumulative indexes (never decrease, only increase)
-(define-data-var global-index-a uint u0)  ;; WELSH distributions per LP (PRECISION scaled)
-(define-data-var global-index-b uint u0)  ;; STREET distributions per LP (PRECISION scaled)
+;; street rewards data structure
 
-;; Perfect accounting system
-(define-data-var total-distributed-a uint u0)  ;; Total WELSH tokens added
-(define-data-var total-distributed-b uint u0)  ;; Total STREET tokens added
-(define-data-var total-claimed-a uint u0)      ;; Total WELSH tokens claimed
-(define-data-var total-claimed-b uint u0)      ;; Total STREET tokens claimed
+;; global cumulative indexes (never decrease, only increase)
+(define-data-var global-index-a uint u0)
+(define-data-var global-index-b uint u0)
 
-(define-map user-rewards
+;; cleanup function call tracking 
+(define-data-var last-cleanup-block uint u0)
+
+;; total distributes tracked for onchain accounting
+(define-data-var total-distributed-a uint u0)
+(define-data-var total-distributed-b uint u0)
+
+;; total claimed tracked for onchain accounting
+(define-data-var total-claimed-a uint u0)
+(define-data-var total-claimed-b uint u0)
+
+(define-map users
   { account: principal }
   {
-    balance-lp: uint,    ;; User's LP token balance
-    block-lp: uint,      ;; Block when user joined/updated
-    debt-a: uint,        ;; Accumulated claimed WELSH tokens
-    debt-b: uint,        ;; Accumulated claimed STREET tokens
-    index-a: uint,       ;; User's WELSH join-time snapshot
-    index-b: uint        ;; User's STREET join-time snapshot
+    ;; user's LP token balance
+    balance: uint,
+
+    ;; block "snapshot" when user joined/updated
+    block: uint,      
+    
+    ;; accumulated claimed WELSH tokens
+    debt-a: uint,        
+    
+    ;; accumulated claimed STREET tokens
+    debt-b: uint,        
+    
+    ;; user's WELSH join-time snapshot
+    index-a: uint,       
+    
+    ;; user's STREET join-time snapshot
+    index-b: uint        
   }
 )
 ```
 
-Key Protection Mechanisms:
-- **Global indexes**: Cumulative-only system that never decreases
 - **Join-time snapshots** (`index-a/b`): Lock baseline preventing retroactive claims
 - **Zero debt initialization**: New users start with `debt-a: 0, debt-b: 0`
 - **Perfect accounting**: Complete tracking of distributed vs. claimed tokens
 - **High precision**: Uses `PRECISION u1000000000` (9 decimals) for accuracy
-
-### Claim Distribution Logic
-
-The zero debt cumulative system ensures fair distribution with immediate participation:
-
-```clarity
-(define-public (claim-rewards)
-  (let (
-    (balance-lp (unwrap! (contract-call? .CREDIT get-balance tx-sender) ERR_BALANCENOT_AVAILABLE))
-    (info (default-to {
-      balance-lp: u0, block-lp: u0, debt-a: u0, debt-b: u0, index-a: u0, index-b: u0}
-      (map-get? user-rewards { account: tx-sender })))
-    (current-global-a (var-get global-index-a))
-    (current-global-b (var-get global-index-b))
-    (user-index-a (get index-a info))
-    (user-index-b (get index-b info))
-    ;; Earned = LP_balance × (current_global_index - user_join_index) / PRECISION
-    (earned-a (/ (* balance-lp (- current-global-a user-index-a)) PRECISION))
-    (earned-b (/ (* balance-lp (- current-global-b user-index-b)) PRECISION))
-    (deb-a (get debt-a info))
-    (deb-b (get debt-b info))
-    ;; Unclaimed = earned - previously_claimed_debt
-    (claimed-a (if (> earned-a deb-a) (- earned-a deb-a) u0))
-    (claimed-b (if (> earned-b deb-b) (- earned-b deb-b) u0))
-  )
-    (begin
-      ;; Transfer tokens if claimable
-      (if (> claimed-a u0) (try! (transformer .WELSHcorgicoin claimed-a tx-sender)) true)
-      (if (> claimed-b u0) (try! (transformer .STREET claimed-b tx-sender)) true)
-      ;; Update perfect accounting tracking
-      (var-set total-claimed-a (+ (var-get total-claimed-a) claimed-a))
-      (var-set total-claimed-b (+ (var-get total-claimed-b) claimed-b))
-      ;; Update user debt to reflect claims
-      (map-set user-rewards { account: tx-sender } {
-        balance-lp: balance-lp,
-        block-lp: (get block-lp info),
-        debt-a: (+ deb-a claimed-a),  ;; Accumulate claimed amounts
-        debt-b: (+ deb-b claimed-b),
-        index-a: user-index-a,        ;; Preserve join-time snapshot
-        index-b: user-index-b
-      })
-      (ok { claimed-a: claimed-a, claimed-b: claimed-b })
-    )
-  )
-)
-```
 
 How It Works:
 1. **Calculate earned tokens**: `LP_balance × (current_global_index - user_join_index) / PRECISION`
@@ -138,406 +76,34 @@ How It Works:
 4. **Perfect accounting**: Track total claimed amounts across all users
 5. **Preserve snapshots**: Keep join-time indexes unchanged for future calculations
 
-<Callout type="important">Position preservation only applies to `claim-rewards()`.
-LP operations (provide/remove/lock/burn liquidity) call `update-user-rewards()` which resets join-time snapshots to current global indexes.</Callout>
-
-## Built-in Anti-Whale Protection:
 
-### The Whale Attack Problem
-
-Traditional AMM distribution systems are vulnerable to "whale gaming attacks" where large liquidity providers can:
-1. Temporarily deposit massive amounts of liquidity
-2. Claim disproportionate distributions from fees generated before their entry
-3. Immediately withdraw and extract distributions from honest long-term providers
-
-### Zero Debt Cumulative System Eliminates Whale Attacks
-
-Our cumulative index system with join-time snapshots automatically prevents whale manipulation. For example, if a whale deposits massive LP position:
-
-- Day 30: Diva has 100K LP, can claim distributions based on her join-time snapshot
-- Day 31: Whale deposits 10M LP
-- Gets `index-a/b` = current global indexes (can't claim historical distributions)
-- Gets `debt-a/b` = 0 (zero debt - starts receiving immediately)
-- When claiming: Whale only receives from distributions accumulated AFTER their entry
-- Result: Each user only gets distributions proportional to their participation period, protected by join-time snapshots
-
-### Simple System vs Complex Anti-Whale Measures
-
-The WELSH STREET zero debt cumulative approach has many advantages, especially in the context of a blockchain.
-
-✅ **Advantages of Zero Debt Cumulative System:**
-- Gas Efficient: High-precision math with minimal computational overhead
-- Fair: Join-time snapshots ensure proportional distribution
-- Immediate Earning: New users start with zero debt and earn immediately
-- Maintainable: Cumulative indexes are simple and mathematically provable
-
-❌ **Problems with Complex Dynamic Time Lock System:**
-- High Gas Costs: Time-based calculations expensive on-chain
-- User Confusion: Variable penalties hard to predict
-- Implementation Risk: Complex logic introduces security vulnerabilities
-
-| Aspect | WELSH STREET | Complex Anti-Whale |
-|--------|----------------------|-------------------|
-| Gas Costs | ✅ Minimal (high-precision math) | ❌ High (time calculations) |
-| User Experience | ✅ Immediate earning capability | ❌ Confusing penalties |
-| Security | ✅ Cumulative = provable | ❌ Complex = attack surface |
-| Whale Protection | ✅ Automatic via snapshots | ❌ Artificial restrictions |
-| Maintenance | ✅ Mathematical simplicity | ❌ Complex edge cases |
-| Time Lockups | ✅ None (zero debt) | ❌ Annoying |
-
-## How WELSH STREET Compares to Other AMMs
-
-### Traditional AMMs
-❌ Traditional AMM Reward Systems have Major Limitations:
-1. Must Withdraw to Claim: Users must burn LP tokens to access rewards
-2. Lose Market Exposure: Can't maintain liquidity position while claiming
-3. High Gas Costs: Multiple transactions needed (withdraw → claim → re-deposit)
-4. Timing Risk: Market can move against you during withdrawal period
-5. Compound Friction: Extra steps discourage frequent reward claiming
-6. 💸 FORCED IMPERMANENT LOSS REALIZATION: Must crystallize IL to claim rewards
-
-### WELSH STREET's Zero Debt Cumulative Approach
-
-✅ Revolutionary Technical Advantages:
-- **Zero Debt System**: New users start earning immediately with no barriers
-- **Join-time Protection**: Snapshots prevent retroactive reward claims
-- **Perfect Accounting**: Mathematical integrity with complete flow tracking
-- **High Precision**: 9-decimal precision prevents calculation errors
-- **Cleanup System**: Automatic recovery of untracked tokens and dust
-
-✅ Revolutionary User Advantages:
 
-| Feature | WELSH STREET | Traditional AMMs |
-|---------|-------------|------------------|
-| Claim Without Withdrawal | ✅ Keep LP position active | ❌ Must burn LP tokens |
-| Impermanent Loss Management | ✅ Keep IL unrealized | ❌ Force IL realization |
-| Maintain Market Exposure | ✅ No position interruption | ❌ Lose exposure during claim |
-| Gas Efficiency | ✅ Single claim transaction | ❌ 3+ transactions needed |
-| Compounding | ✅ Easy frequent claims | ❌ Expensive to compound |
-| Whale Protection | ✅ Automatic via debt system | ❌ Vulnerable to gaming |
-| Time-Weighted Rewards | ✅ Fair distribution | ❌ Often exploitable |
-
-### Understanding Impermanent Loss
 
-It's really important to understand impermanent loss (IL) when it comes to AMM.  It's called "impermanent" because it can be avoided with the correct strategy and knowledge of the issue.
-
-Impermanent Loss Definition:
-IL occurs when the price ratio of tokens in your LP position changes compared to when you first deposited. You have fewer tokens than if you had simply held them individually, but the loss is "impermanent" because it can reverse if prices return to original ratios.
-
-### WELSH STREET's Impermanent Loss Advantage
-
-Traditional AMMs Force Bad Decisions:
-```
-User has IL but wants rewards → Must withdraw LP → IL becomes PERMANENT loss
-→ User loses money to claim rewards → Discourages reward claiming
-```
-
-The Game-Changing Benefit is that WELSH STREET enables optimal strategy:
-```
-User has IL but wants rewards → Claim rewards → Keep LP position
-→ IL stays UNREALIZED → Can recover if prices revert → Win-win scenario
-```
-
-### Real-World IL Scenario:
-
-Let's work through how IL effects the AMM experience with a real-life example.  Meet Fiona, she's new to AMM's, likes trading, but doesn't really have time to track impermanent loss.  Here's what can happen and why WELSH STREET is different.
-
-1. **Initial Position Setup:**
-```
-Fiona provides liquidity to BTC/USDC pool when BTC = $100,000
-Fiona deposits: 0.01 BTC + $1,000 USDC
-Total position value: $2,000
-```
-
-2. **Price Movement & Impermanent Loss Calculation:**
-```
-BTC price rises to $120,000 (+20% increase)
-
-If Fiona had held tokens separately:
-- 0.01 BTC = $1,200 (was $1,000)
-- $1,000 USDC = $1,000 (unchanged)
-- Total value: $2,200
-
-Fiona's actual LP position after rebalancing:
-- ~0.0091 BTC = $1,092
-- ~$1,092 USDC
-- Total value: ~$2,184
-
-Impermanent Loss: $2,200 - $2,184 = $16 (0.8% loss)
-```
-
-3. **But Fiona wants to claim $25 in accumulated rewards:**
-
-If she follows the traditional AMM Approach:
-```
-❌ Step 1: Has to Withdraw LP tokens to claim rewards!
-❌ Step 2: IL becomes REALIZED PERMANENTLY with a -$16 loss
-❌ Step 3: Fiona receive $25 rewards
-❌ Step 4: Pays gas fee for withdrawal
-❌ Net result: $25 rewards - $16 IL = $9 gain 😰
-```
-
-**REMEMBER...**
-It's called *Impermanent* Loss because if If BTC drops back to $100,000 later:
-- IL disappears completely (back to original ratio)
-- Fiona keeps the full $25 rewards + recovers from IL
-- Total benefit: $25 + $0 IL = $25 profit
-
-But this takes market timing and what if Bitcoin keeps going up?!!
-
-### WELSH STREET IL Scenario:
-
-The WELSH STREET rewards system is designed to allow users to realize rewards gains *without* taking the hit from impermanent loss by not having to withdrawal their liquidity tokens.
-
-1. **Position Setup**:
-
-```
-Remember Fiona is up against IL if she withdrawals her LP to claim her rewards.
-Impermanent Loss: $2,200 - $2,184 = $16 (0.8% loss)
-```
-
-2. **On WELSH STREET just Claim Rewards!**
 
-There's no need to calculate your IL, because you don't need to withdrawal your LP tokens to claim rewards!
+## Rewards Functions
 
-```
-✅ Step 1: Claim $25 rewards (single transaction)
-✅ Step 2: Keep LP position intact → IL stays UNREALIZED
-✅ Step 3: Pay minimal gas on the Stacks network
-✅ Net result: $25 rewards - gas = +$25 profit 🎉
-
-```
-Strategic Advantages:
-- ✅ Harvest rewards frequently without realizing IL
-- ✅ Wait for favorable price ratios before withdrawing
-- ✅ Maintain long-term positions while earning yield
-- ✅ Benefit from price mean reversion (IL can disappear)
-- ✅ Compound rewards without timing constraints
+### Claim Rewards
 
-## WELSH STREET's Approach Is Revolutionary
+`claim-rewards`
 
-### Rewards Workflow Comparison
+### Cleanup Rewards
 
-**Traditional AMM Workflow:**
-```
-User wants rewards → Withdraw LP → REALIZE IMPERMANENT LOSS → Lose market exposure
-→ Claim rewards → Pay gas fees → Re-deposit → Pay gas again → Resume earning
-```
+`cleanup-rewards`
 
-**WELSH STREET Workflow:**
-```
-User wants rewards → Claim rewards → KEEP IL UNREALIZED → Keep earning → Done!
-```
+### Decrease Rewards
 
-The Benefits of the WELSH STREET system are tremendous:
-- Gas Savings: 60-80% reduction in transaction costs
-- IL Protection: Keep losses unrealized and potentially recoverable
-- Position Continuity: Never interrupt your market-making strategy
-- Optimal Timing: Claim rewards frequently, withdraw only when profitable
+`decrease-rewards`
 
-### Gas Optimization Benefits
-
-Traditional AMM Reward Claiming:
-```
-Transaction 1: approve() - Enable withdrawal
-Transaction 2: withdrawLiquidityWithRewards() - Burn LP tokens
-Transaction 3: approve() - Enable re-deposit
-Transaction 4: addLiquidity() - Mint new LP tokens
-```
-Total: 4 Transactions = lot's of  gas
+### Donate Rewards
 
-WELSH STREET Reward Claiming:
-```
-Transaction 1: claim-rewards() - Get rewards, keep LP position
-```
-Total: 1 Transaction = minimal gas
-
-Gas Savings: 80% reduction in gas costs 🔥
-
-### User Experience Advantages
-
-1. No Market Timing Risk: Keep earning fees during reward claiming
-2. Impermanent Loss Protection: Keep IL unrealized and potentially recoverable
-3. Continuous Compounding: Claim frequently without position interruption
-4. Simplified Mental Model: LP position and rewards are separate concepts
-5. Portfolio Management: Maintain desired liquidity ratios while harvesting rewards
-6. MEV Protection: No vulnerable withdraw-redeposit window
-7. Strategic Flexibility: Choose optimal timing for both reward claims and position exits
-
-### Economic Efficiency
-
-WELSH STREET enables optimal user behavior:
-- ✅ Frequent reward harvesting (low gas cost)
-- ✅ Continuous market making (always earning fees)
-- ✅ Optimal position sizing (no withdrawal constraints)
-- ✅ Risk management (maintain exposure while claiming)
-- ✅ IL mitigation (keep losses unrealized until favorable conditions)
-
-Traditional AMMs discourage optimal behavior:
-- ❌ Infrequent claiming (high gas costs)
-- ❌ Position interruption (miss fee opportunities)
-- ❌ Timing constraints (vulnerable to market moves)
-- ❌ All-or-nothing (can't claim partial rewards)
-- ❌ Forced IL realization (crystallize losses to get rewards)
-
-## Reality Check: Direct Contract Interaction vs. Frontend
-
-The WELSH STREET rewards system was kept simple for the reasons mentioned above (gas efficiency, scalability, reduce attack surface, etc.), but this doesn't mean there are not trade-offs.  The user's block position is reset every time they perform a liquidity operation (provide/remove/lock/burn).  This enhances security and prevents manipulation of the rewards system.  However, this means if the user changes their LP position in any way before claiming rewards, those rewards are lost forever. The rewards contract will rebalance and the unclaimed rewards are redistributed to the other liquidity providers.
-
-```clarity
-(try! (contract-call? .rewards update-user-rewards tx-sender)) ;; Resets user's reward baseline.
-```
-
-To offer the best UX possible and prevent user's from losing their claim to rewards, on the frontend the WELSH STREET Exchange has implemented safety checks so users cannot change their liquidity position using the frontend without claiming rewards.  However, interacting with the contracts directly, for example using the Stacks explorer or CLI, these protections do not exist.
-
-<Callout type="warning">Claim Rewards before modifying your liquidity position to avoid losing rewards.</Callout>
-
-This isn't manipulation or off-chain shenanigans affecting on-chain behavior! The WELSH STREET frontend simply checks the user's balance and changes the state of the liquidity function buttons to notify user's that they have rewards.
-
-### Reward Loss Scenario
-
-Here's what happens if a user changes their LP without claiming rewards.
-
-```
-1. User has unclaimed rewards but calls exchange contract directly:
-2. Via block explorer or CLI user calls (contract-call? .exchange provide-liquidity u1000000)
-3. Exchange calls: (contract-call? .rewards update-user-rewards tx-sender)
-4. update-user-rewards resets join-time snapshots to current global indexes
-5. Unclaimed rewards are redistributed to other LPs through the cumulative system ❌
-6. User's new LP position starts fresh with zero debt (immediate earning capability)
-```
-
-### High-Precision Mathematics
-
-The rewards system uses enhanced precision to ensure accuracy with small amounts:
-
-```clarity
-;; High precision constant (9 decimal places)
-(define-constant PRECISION u1000000000)
-
-;; Global index calculation with precision
-(index-increment (/ (* amount PRECISION) total-lp))
-
-;; User earning calculation
-(earned-amount (/ (* lp-balance (- current-global-index user-join-index)) PRECISION))
-```
-
-This ensures accurate reward calculations even for micro-amounts and prevents precision loss that could accumulate over time.
-
-### What the Frontend Protects
-The frontend warning system only works when users use the WELSH STREET Exchange UI:
-- ✅ Detects unclaimed rewards
-- ✅ Shows warning modals
-- ✅ Disables LP operation buttons
-- ✅ Forces a claim-first workflow
-- ✅ Protects 99% of users that prefer a frontend instead of direct contract interaction
-
-### What Happens with Direct Contract Calls
-Users can bypass frontend protection by calling contracts directly via:
-- Block Explorer (like Stacks Explorer)
-- CLI tools (like `clarinet` or `stacks-cli`)
-- Direct API calls to Stacks nodes
-- Third-party interfaces
-
-### Rewards Implementation Architecture
-
-This is more technical breakdown of how the rewards is built into the exchange operations:
-
-**Provide Liquidity**
-```clarity
-;; Exchange contract calls rewards reset on ALL LP operations
-(define-public (provide-liquidity (amount-a uint))
-  (begin
-    ;; ... liquidity provision logic ...
-    (try! (contract-call? .CREDIT mint amount-lp))
-    ;; AUTOMATIC RESET: User's reward tracking resets to current state
-    (try! (contract-call? .rewards update-user-rewards tx-sender))
-    ;; ... rest of function ...
-  )
-)
-```
-
-Reset Function Logic in the **Rewards** contract:
-```clarity
-(define-public (update-user-rewards (user principal))
-  (let (
-    (current-lp-balance (unwrap! (contract-call? .CREDIT get-balance user) ERR_BALANCENOT_AVAILABLE))
-    (current-global-index-a (var-get global-index-a))
-    (current-global-index-b (var-get global-index-b))
-    (current-block stacks-block-height)
-    (existing-info (map-get? user-rewards { account: user }))
-  )
-    (begin
-      ;; SECURITY: Only exchange contract can call this
-      (asserts! (is-eq contract-caller .exchange) ERR_NOT_CONTRACT_OWNER)
-
-      ;; ZERO DEBT RESET: New users start with zero debt, immediate earning capability
-      (map-set user-rewards { account: user } {
-        balance-lp: current-lp-balance,
-        block-lp: (if (is-some existing-info) (get block-lp (unwrap-panic existing-info)) current-block),
-        ;; Zero debt for new users - immediate earning capability
-        debt-a: (if (is-some existing-info) (get debt-a (unwrap-panic existing-info)) u0),
-        debt-b: (if (is-some existing-info) (get debt-b (unwrap-panic existing-info)) u0),
-        ;; Join-time snapshots prevent retroactive claims
-        index-a: current-global-index-a,
-        index-b: current-global-index-b
-      })
-      (ok true)
-    )
-  )
-)
-```
-
-## WELSH STREET Rewards Key Benefits and Advantage Recap
-
-### WELSH STREET vs. Other AMMs
-
-| Protocol | Reward Claiming | Position Management | Gas Efficiency | Whale Protection |
-|----------|----------------|-------------------|----------------|------------------|
-| WELSH STREET | ✅ Claim without withdrawal | ✅ Keep LP active | ✅ 1 transaction | ✅ Debt-based automatic |
-| Uniswap V2/V3 | ❌ Must withdraw first | ❌ Lose position | ❌ 3-4 transactions | ❌ Vulnerable to gaming |
-| SushiSwap | ❌ Must withdraw first | ❌ Lose position | ❌ 3-4 transactions | ❌ Vulnerable to gaming |
-| PancakeSwap | ❌ Must withdraw first | ❌ Lose position | ❌ 3-4 transactions | ❌ Basic time locks only |
-| Curve | ❌ Must withdraw first | ❌ Lose position | ❌ 3-4 transactions | ❌ Vulnerable to gaming |
-
-### WELSH STREET Innovations
-
-1. 🔥 Revolutionary UX: First Meme Dex to allow claiming rewards without LP withdrawal
-2. 💸 Impermanent Loss Protection: Keep IL unrealized and potentially recoverable
-3. ⚡ Gas Optimized: 87% reduction in reward-claiming costs
-4. 🛡️ Automatic Whale Protection: Debt-based system prevents manipulation naturally
-5. 💰 Capital Efficient: No forced position interruption for reward harvesting
-6. 🏗️ Simple Architecture: Less complexity = more security and maintainability
-7. 📈 Compound Friendly: Easy frequent claiming encourages optimal user behavior
-8. 🐋 Natural Whale Protection: Debt system eliminates manipulation without artificial restrictions
-9. 🚀 Superior UX: Simplified mental model that users do NOT have to withdrawal their LP position to claim rewards
-
-### Market Impact
-
-This design positions WELSH STREET as the most capital-efficient and user-friendly AMM for long-term liquidity providers, especially attractive for:
-- Long-term, institutional and visionary LPs seeking continuous yield without position management overhead
-- Retail Users who want to compound frequently without high gas costs
-- Risk-Conscious LPs who don't want withdrawal timing risk
-
-### Economic Impact
-
-For Users:
-- Lower transaction costs
-- Impermanent loss stays unrealized
-- Continuous fee earning
-- No timing risk
-- Better capital efficiency
-- Strategic flexibility for position management
-
-For Protocol:
-- Higher user retention (better UX)
-- Increased TVL (no forced withdrawals)
-- More trading volume (users stay active)
-- Natural whale resistance
-
-For Ecosystem:
-- Sets new standard for AMM reward systems
-- Attracts users from less efficient protocols
-- Demonstrates WELSH STREET's technical innovation
-- Creates competitive moat through superior design
-- World's First Dedicated Meme DEX for Bitcoin's first dog, WELSH
+`donate-rewards`
+
+### Increase Rewards
+
+`increase-rewards`
+
+### Update Rewards 
+
+`update-rewards-a`
+
+`update-rewards-b`
