@@ -54,11 +54,18 @@ The `lock-liquidity` function creates permanently committed base liquidity that 
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
       (asserts! (and (> res-a u0) (> res-b u0)) ERR_NOT_INITIALIZED)
+
+      ;; calculates amount-b based on existing reserves ratio
       (let ((amount-b (/ (* amount-a res-b) res-a)))
+      
         (begin
           (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
+
+          ;; directly transfers assets to liquidity pool. No LP tokens minted.
           (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .street-market none))
           (try! (contract-call? .street-token transfer amount-b tx-sender .street-market none))
+      
+          ;; updates reserves and locked internal tracking variables
           (var-set locked-a (+ lock-a amount-a))
           (var-set locked-b (+ lock-b amount-b))
           (var-set reserve-a (+ res-a amount-a))
@@ -83,25 +90,44 @@ The `initial-liquidity` function allows the contract owner to set the pool ratio
 ```clarity
 (define-public (initial-liquidity (amount-a uint) (amount-b uint))
   (let (
+    ;; locked liquidity tracked by contract
     (lock-a (var-get locked-a))
     (lock-b (var-get locked-b))
+
+    ;; total liquidity (reserves) tracked by contract
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
-    (total-supply-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+
+    ;; used for initialization check
+    (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+
+    ;; sets the initial liquidity pool ration based on geometric mean
     (amount-lp (sqrti (* amount-a amount-b)))
   )
   (begin
     (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
     (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
+
+    ;; only admin or owner can set initial liquidity ratio
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    
+    ;; initialization check
     (asserts! (or
       (and (is-eq res-a u0) (is-eq res-b u0))
-      (is-eq total-supply-lp u0))
+      (is-eq total-lp u0))
       ERR_INITIALIZED)
+
+    ;; transfers assets from user to liquidity pool
     (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .street-market none))
     (try! (contract-call? .street-token transfer amount-b tx-sender .street-market none))
+    
+    ;; mints LP tokens to user
     (try! (contract-call? .credit-token mint amount-lp))
+    
+    ;; updates user's reward accounting.  deployer must be part of reward accounting
     (try! (contract-call? .street-rewards increase-rewards tx-sender amount-lp))
+
+    ;; increases reserves and also tracks locked liquidity
     (var-set reserve-a (+ lock-a amount-a))
     (var-set reserve-b (+ lock-b amount-b))
     (ok {
@@ -123,22 +149,27 @@ The `provide-liquidity` function enables normal AMM liquidity provision with LP 
 ```clarity
 (define-public (provide-liquidity (amount-a uint))
   (let (
+    ;; locked liquidity tracked by contract
     (lock-a (var-get locked-a))
     (lock-b (var-get locked-b))
+    
+    ;; total liquidity (reserves) tracked by contract
     (res-a  (var-get reserve-a))
     (res-b  (var-get reserve-b))
+    
+    
     (avail-a (if (>= res-a lock-a) (- res-a lock-a) u0))
     (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
-    (total-supply-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+    (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
   )
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
-      (asserts! (> total-supply-lp u0) ERR_NOT_INITIALIZED)
+      (asserts! (> total-lp u0) ERR_NOT_INITIALIZED)
       (asserts! (and (> avail-a u0) (> avail-b u0)) ERR_NOT_INITIALIZED)
       (let (
         (amount-b (/ (* amount-a avail-b) avail-a))
-        (lp-from-a (/ (* amount-a total-supply-lp) avail-a))
-        (lp-from-b (/ (* amount-b total-supply-lp) avail-b))
+        (lp-from-a (/ (* amount-a total-lp) avail-a))
+        (lp-from-b (/ (* amount-b total-lp) avail-b))
         (amount-lp (if (< lp-from-a lp-from-b) lp-from-a lp-from-b))
       )
         (begin
@@ -169,6 +200,8 @@ The `remove-liquidity` function allows LP token holders to withdraw their liquid
 ```clarity
 (define-public (remove-liquidity (amount-lp uint))
   (let (
+
+    ;; total liquidity (reserves) tracked by contract
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
     (lock-a (var-get locked-a))

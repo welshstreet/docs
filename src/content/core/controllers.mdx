@@ -54,48 +54,53 @@ The `BOUNTY` exists as a small resistance to sybil attack. The amount is approxi
 ```clarity
 ;; Welsh Street Emission Controller
 
+;; constants
+
+;; mint STREET amount
+(define-constant AMOUNT u10000000000)
+
+;; threshold of credit holding. Reduces sybil attack and encourages network participation
+(define-constant THRESHOLD u1000)
+
+;; variables
+
+;; current epoch, only incremented on successful mints (bitcoin blocks can be skipped)
+(define-data-var current-epoch uint u0)
+
+;; tracking for once per block minting
+(define-data-var last-burn-block uint u0)
+
 (define-public (mint)
   (let (
       (last-mint (var-get last-burn-block))
-      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
-      (caller-credit (unwrap-panic (contract-call? .credit-token get-balance tx-sender)))
-      (min-credit (if (< total-lp BASIS) CREDIT (/ total-lp BASIS)))
-      (prev-caller (var-get last-caller))
+      (blocks-elapsed (- burn-block-height last-mint))
+      (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+      (caller-credit (unwrap! (contract-call? .credit-token get-balance contract-caller) ERR_BALANCE))
+      (min-credit (/ total-lp THRESHOLD))
     )
     (begin
-      (asserts! (not (is-eq burn-block-height last-mint)) ERR_EMISSION_INTERVAL)
+      (asserts! (> total-lp u0) ERR_NO_LIQUIDITY)
+      (asserts! (>= blocks-elapsed u1) ERR_EMISSION_INTERVAL)
+
+      ;; must hold at least 1/1000 of credit supply      
       (asserts! (>= caller-credit min-credit) ERR_NOT_ELIGIBLE)
 
-      ;; cannot call emission mint twice in a row
-      (asserts!
-        (or (is-none prev-caller)
-            (not (is-eq tx-sender (unwrap-panic prev-caller))))
-        ERR_TENURE
-      )
-
-      ;; mints STREET tokens to tx-sender
-      (try! (contract-call? .street-token mint BOUNTY tx-sender))
-      
       ;; mints STREET tokens to rewards contract
-      (try! (contract-call? .street-token mint REWARD .street-rewards))
+      (try! (contract-call? .street-token mint AMOUNT .street-rewards))
       
       ;; updates rewards accounting system with new street emissions
-      (try! (contract-call? .street-rewards emission-rewards REWARD total-lp))
+      (try! (contract-call? .street-rewards update-rewards-b AMOUNT))
       
       ;; updates emission epoch
       (var-set current-epoch (+ (var-get current-epoch) u1))
       
-      ;; updates last burn block check
+      ;; updates last burn block
       (var-set last-burn-block burn-block-height)
       
-      ;; updates last-caller
-      (var-set last-caller (some tx-sender))
-      
       (ok {
+        amount: AMOUNT,
         block: burn-block-height,
         epoch: (var-get current-epoch),
-        reward: REWARD,
-        user: BOUNTY
       })
     )
   )
@@ -114,6 +119,25 @@ The `street-controller` contract collects a 1,000 WELSH donation per mint as ant
 ```clarity
 ;; Welsh Street Controller
 
+;; constants
+
+;; increased mint amount every 21 mints
+(define-constant MINT_BONUS   u1000000000000)
+
+;; standard STREET mint amount
+(define-constant MINT_STREET   u100000000000)
+
+;; WELSH distributed to LP providers.  Protects against sybil attack
+(define-constant DONATE_WELSH    u1000000000)
+
+;; Maximum STREET mints and NFTs minted
+(define-constant MINT_CAP             u21000)
+
+;; variables
+
+;; internal counter to track STREET mints and NFTs
+(define-data-var mint-count uint u0)
+
 (define-public (mint)
   (let (
       (user-welsh (unwrap-panic (contract-call? .welshcorgicoin get-balance tx-sender)))
@@ -122,8 +146,13 @@ The `street-controller` contract collects a 1,000 WELSH donation per mint as ant
       (mint-amount (if is-milestone MINT_BONUS MINT_STREET))
     )
     (begin
+      ;; check wallet for WELSH
       (asserts! (>= user-welsh DONATE_WELSH) ERR_YOU_POOR)
+      
+      ;; Maximum 2 mints per wallet address
       (asserts! (< (default-to u0 (map-get? users tx-sender)) u2) ERR_ALREADY_MINTED)
+      
+      ;; Maximum mint check
       (asserts! (<= count MINT_CAP) ERR_MINT_CAP)
       
       ;; mints STREET to tx-sender

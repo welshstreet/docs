@@ -37,6 +37,6 @@ next-env.d.ts
 _pagefind/
 
 # user customizations
-/todo
+/.archive
 /.github
 /.legal

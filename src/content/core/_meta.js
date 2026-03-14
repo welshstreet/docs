@@ -8,6 +8,5 @@ export default {
   swap: 'Swaps',
   protection: 'User Protection',
   testing: 'Testing Coverage',
-  fuzzing: 'Fuzz Testing',
   security: 'Security Audit'
 }
