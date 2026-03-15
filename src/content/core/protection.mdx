@@ -1,115 +1,73 @@
 import { Callout } from 'nextra/components'
 
-# User Protection
+# Welsh Street User Protection
 
-The WELSH STREET Exchange leverages the security and added user protections of the Stacks blockchain to implement slippage in an innovative way.
+The Welsh Street Exchange leverages the security and user-level protections of the Stacks blockchain to implement slippage in an innovative way.
 
 ## Post-Conditions
 
-In Stacks — Post-conditions are transaction-level assertions enforced by the Clarity runtime at commit time. They state what must be true about asset movements (who can send or receive how much of which asset). If any post-condition is violated, the entire transaction aborts with no state changes — no partial swaps, no surprise fees.
+In Stacks, post conditions are transaction-level assertions enforced by the Clarity runtime at commit. They state who can send or receive how much of which asset. If any post-condition is violated, the entire transaction aborts with no state changes — no partial swaps, no surprise fees.
 
-Post-conditions are not Clarity code. They are attached to the signed transaction and enforced by nodes when the transaction is processed. This lets us keep contract logic lean while giving users hard, chain-native guarantees.
+Post-conditions are not Clarity code. They are attached to the signed transaction and enforced by nodes when the transaction is processed. This keeps contract logic lean and efficient while giving users chain-native guarantees and protection.
 
-### Stacks API ↔ Contract Runtime
+### Implementation 
 
-- Client / API (tx building): The wallet or app constructs the transaction and attaches post-conditions using Stacks SDK helpers. It broadcasts via the Stacks node API.
-- Chain / Runtime (enforcement): When our Clarity `swap` (or similar) function executes, the VM tracks real asset deltas for principals mentioned in the post-conditions. At the end, it checks those deltas against our declared bounds. If any bound fails, the transaction reverts.
+**Client**
 
-In short: Clarity executes the swap; the Stacks runtime enforces the promises a transaction makes about asset movements.
+The client, or in this case the frontend, builds the transactions with inputs from the user. The wallet or app constructs the transaction and attaches post-conditions using Stacks helper functions. The wallet then broadcasts the transaction to a Stacks node.
 
-## Slippage (Upper & Lower Bounds)
+**Chain**
 
-In the WELSH STREET Exchange, the upper and lower bounds of the post-conditions are defined by Slippage.  There are no slippage calculations on-chain. Both lower and upper bounds via post-conditions protect the user AND the liquidity pool. Because the liquidity pool is composed of user-provided liquidity, our AMM effectively protects ALL the users.
+The chain, or in this case Stacks, is the runtime environment where the post-conditions are enforced. When the Clarity function executes, the runtime environment tracks real asset changes for principals mentioned in the post-conditions. At the end, it checks those changes against the declared bounds in post-conditions. If any token amount exceeds a bound, the transaction reverts.
 
-- User protection (min-out):
+## Slippage
 
-  > I will spend at most X of token A and I must receive at least Y of token B.
+In the Welsh Street Exchange, the upper and lower bounds of the post-conditions are defined by slippage.  There are no slippage calculations on-chain. The user sets their slippage tolerance in the frontend.
 
-  If the pool’s state would result in less than Y, the tx fails safely.
+The slippage upper and lower bounds protect the user and the liquidity pool. Because the liquidity pool is composed of user-provided liquidity, the AMM effectively protects all users on every transaction.
 
-- Pool / Exchange protection (max-out):
+Here is an example of slippage explicitly stated:
 
-  > The pool will not send more than Z of token B in this trade.
+<div className="equation">
+  The user will send at most X of token A and must receive at least Y of token B.
+</div>
 
-  This prevents a single trade from extracting an outsized windfall—which would otherwise be a loss to liquidity providers. Protecting the pool protects all users because LPs (users) are the owners of the liquidity pool and the rewards pool.
+If the pool’s state would result in less than Y, the tx fails and the user is protected against this loss. For the same transaction, from the exchange's point-of-view:
 
-Because post-conditions live on the transaction, these guardrails don’t bloat the contract with extra branching, keeping it lightweight, gas-efficient, and fast.
+<div className="equation">
+  The pool will receive at least X of token A not send more than Y of token B in this trade.
+</div>
 
-**Price Impact Calculation:**
-Price impact increases with swap size relative to pool depth. Larger swaps experience higher slippage due to the constant product curve.
+This prevents a single trade from extracting an outsized windfall—which would otherwise be a loss to liquidity providers. Protecting the pool protects all users in the transaction as LPs are users and owners of the liquidity pool.
 
-**Slippage Formula:**
-```clarity
-price-impact = 1 - (output-amount / (input-amount * current-rate))
-```
+### Example 
 
-## A Stacks Superpower
+The example is a scenario when a very large trade occurs right before a user makes a trade in the same direction. Assume a whale wants to buy a large amount of token B. The whale’s trade pushes the price of token B up by making it scarcer in the pool. If the whale trade executes before the user can analyze the new price, the user would receive fewer B for the same 1,000 unless post conditions stop the trade.
 
-On many chains, “slippage” is just a UI field or ad‑hoc contract logic — extra code paths, higher gas, and more audit surface. Stacks elevates execution guarantees to the transaction layer: cryptographically enforced, chain-native, and composable. Builders get lean, auditable code while users get protocol‑level safety rails.
+Transaction fees and the share fee are not including in the examples for simplicity.
 
-Our AMM uses slippage as upper and lower bounds to protect traders and LPs, delivering clean failure instead of bad fills and keeping our contracts tight, fast, and resilient. It’s not just safer — it’s a better developer and user experience.
+<div className="equation">
+  The user swaps 1,000 A → 1,000 B with a 1% slippage setting. 
 
-### Threats & How Post-Conditions Help
+  A whale submits a huge A → B swap before the user’s tx confirms.
+</div>
 
-- MEV Sandwiching:
-  If front/back-running pushes price outside a user’s declared bounds, the user’s min‑out / max‑in conditions fail. No toxic fill.
+From this quote and slippage, the frontend computes the slippage bounds where the user sends exactly 1,000 A from the user principal. The AMM contract must send between 990 B and 1,010 B to the user. In other words the expected output must be 1,000 B with the upper and lower bounds:
 
-- Extreme Market Conditions (spikes, liquidity shocks):
-  Rapid swings can’t slip your fill beyond what you allowed. The tx either meets your bounds or safely reverts.
+<div className="equation">
+Upper bound = floor(1,000 × (1 + 0.01)) = floor(1,010) = 1,010 B
 
-- Slippage Protection:
-  Encoded directly as post-conditions (“spend ≤ X”, “receive ≥ Y”), enforced by the chain—stronger than UI-only checks.
-
-- Reasonable Fee Limits:
-  Cap what the rewards contract can collect per tx. If a misconfig would exceed that cap, the tx reverts.
-
-
-### Example 1 — Massive Move
-
-> A whale submits a huge swap that is in the mempool, but the user’s quote is based on the previous state. The user submits a trade right after.
-
-- The user’s tx post-conditions (attached by the user’s wallet):
-  - Spend ≤ 1,000 A (`LessEqual` on the user’s standard principal for token A)
-  - Pool must send ≥ 480 B (`GreaterEqual` on the AMM contract principal for token B)
+Lower bound = floor(1,000 × (1 − 0.01)) = floor(990) = 990 B
+</div>
 
 Two possible outcomes at commit time:
 
-1. Whale confirms first → price moves down.
-  Re-evaluating the user’s tx against the new pool state yields only 430 B for the 1,000 A input.
-  - The “pool sends ≥ 480 B” condition fails → transaction reverts.
-  - The user keeps token A, pays no fees, and receives no partial fills.
+**1. Whale tx confirms *before* the user**
 
-2. Whale confirms after the user (or not at all).
-  The current state still supports ≥ 480 B out.
-  - Both conditions pass → transaction executes and the user receives at least the promised amount.
+The price moves down sharply and the user's tx is calculate on the new pool state after teh whale swap. Re-evaluating the user’s tx against the new pool state now yields 960 B out for the 1,000 A input. `960 B < lower bound (990 B)` results in the lower bound failing. The transaction reverts and the user keeps 1,000 A.
 
-<Callout type="default">The user never receives a worse-than-agreed price, even if state changes between signing and confirmation.</Callout>
+**2. Whale tx confirms *after* the user**
 
-### Example 2 — Anti-Windfall
+The current state at execution still supports 995 B out for 1,000 A in. `995 B` lies between `lower bound (990)` and `upper bound (1,010)`. All post-conditions pass and the transaction executes. The user receives 995 B for 1,000 A which was better than the lower bound the user set.
 
-> Due to a sudden oracle misread off-chain or a pending arbitrage, a quote could—momentarily—suggest an outsized payout.
-
-- AMM sets a pool-side post-condition for swaps routed through the contract:
-  “Pool will not send more than Z B for this trade.”
-
-<Callout type="default">If executing the swap would require the pool to send > Z B, the transaction reverts. This avoids a single-trade windfall (which equals an LP loss), preserving the pool for all users.</Callout>
-
-### Example 3 — Fee Ceiling
-
-> The protocol fee is configured as 2% maximum. A misconfiguration or upgrade could try to take more.
-
-- User tx includes a fee-limit post-condition against the rewards contract principal:
-  "Rewards contract may receive ≤ F units for this transaction."
-
-<Callout type="default">If fee transfer would exceed F, the post-condition fails → revert. Users can cap fees independently of UI or contract configuration mistakes.</Callout>
-
-
-## TL;DR
-
-- Less on-chain code: Fewer branches and state checks → smaller attack surface.
-- Lower gas: Guarantees move out of contract logic into the tx layer.
-- Faster execution: Simple, predictable paths in Clarity.
-- Better UX: Users and LPs get deterministic, enforceable bounds on price, payout, and fees.
-- Enhanced Protection: Protect users and LPs from windfalls, massive moves and extreme volatility
-
-<Callout type="info">Post-conditions and Slippage help keep our users and liquidity pool safe </Callout>
+<Callout type="info">Post-conditions and Slippage help protect users and liquidity providers from unexpected or undesirable results</Callout>

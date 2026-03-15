@@ -20,8 +20,6 @@ Rewards are tracked with a single ever‑increasing global index per token. Each
 
 Explicitly, this index is the total rewards accumulated per 1 CREDIT LP token (for each reward token). Ignoring debt, the claimable amount is calculated by the equation:
 
-<br/>
-
 <div className="equation">
   unclaimed = lpBalance × (globalIndex − userIndex) / PRECISION
 </div>
@@ -36,7 +34,7 @@ When a user joins the system or their position is (re)registered, their `debt-a`
 
 ## Rewards Sources
 
-WELSH STREET distributions accumulate from three primary and one temporary on-chain sources. 
+Welsh Street distributions accumulate from three primary and one temporary on-chain sources. 
 
 ### Trading Fee Allocation
 

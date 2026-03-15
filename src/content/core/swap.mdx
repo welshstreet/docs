@@ -8,8 +8,6 @@ Welsh Street implements a constant product Automated Market Maker (AMM) with int
 
 The Welsh Street Exchange implements the*constant product formula:
 
-<br/>
-
 <div className="equation">
 x * y = k
 </div>
@@ -175,15 +173,10 @@ The exchange implements a fee system where all swap fees are transferred into th
 
 ## Price Impact
 
-Price impact is calculated only on the frontend as an informational warning; the on-chain swap contracts do not compute or enforce any price-impact logic. The UI compares the *execution price* of the trade (output received per unit of effective input after fees) to the *spot price* implied by the current reserves, and reports the percentage difference:
-
-<br/>
+Price impact is calculated only on the frontend as an informational warning; the on-chain swap contracts do not compute or enforce any price-impact logic. The UI compares the *execution price* of the trade (output received per unit of input after fees) to the *spot price* implied by the current reserves, and reports the percentage difference. A higher percentage means the trade is moving the market more (larger slippage). 
 
 <div className="equation">
-price impact ≈ 1 − ( execution price / spot price )
+  price impact ≈ 1 − ( execution price / spot price )
 </div>
 
-A higher percentage means the trade is moving the market more (larger slippage). The slippage settings then turn this into protection: the frontend uses chosen tolerance to build post conditions for the transaction, so if the on-chain outcome would exceed the allowed slippage or fee bounds the transaction fails instead of filling at a worse price. The exact post-condition mechanics are described in the next section, User Protection.
-
-
-
+The way users control price impact is by setting upper and lower bounds using slippage. The slippage settings let the frontend users chose their tolerance to let the transaction "slip" above or below the price impact displayed on the frontend. If the on-chain outcome exceeds the allowed slippage the transaction fails instead of filling at a worse price than the user expects or can tolerate. Stacks and Clarity contracts achieve this using a user-level security system called  post-condition and the mechanics are described in the next section, User Protection.
