@@ -2,7 +2,7 @@
 
 ## Methodology
 
-The WELSH STREET Exchange employs a comprehensive testing framework that validates every contract function and error condition. The testing approach prioritizes complete coverage through dedicated test files for each function, systematic error validation, and chain state verification.
+The Welsh Street Exchange employs a comprehensive testing framework that validates every contract function and error condition. The testing approach prioritizes complete coverage through dedicated test files for each function, systematic error validation, and chain state verification.
 
 ### Testing Architecture
 
@@ -43,7 +43,6 @@ Each test validates actual blockchain state rather than reiterating expected val
 | `exchange.clar` | 16/16 | 7/7 | 12 | 100% |
 | `CREDIT.clar` | 6/6 | 2/2 | 4 | 100% |
 | `rewards.clar` | 10/10 | 2/2 | 7 | 100% |
-| `genesis.clar` | 11/11 | 3/3 | 7 | 100% |
 
 **Note**: `WELSHcorgicoin.clar` is excluded from testing as it exists on mainnet. An exact copy was used to replicate production environment conditions.
 
@@ -78,12 +77,6 @@ Each test validates actual blockchain state rather than reiterating expected val
 - Immutable: 1% swap fee, 1% exit tax (all fees benefit liquidity providers)
 - Error codes: 7 (initialization, amounts, authorization, calculations)
 - Test files: Liquidity operations, swaps, read-only, scenarios
-
-### Genesis Contract
-- Contract: `genesis.clar`
-- Functions: 11 (contribution, claiming, withdrawal, phase management, queries)
-- Error codes: 3 (authorization, phases, amounts)
-- Test files: 7 (contribute, claim, withdrawal, phase controls, read-only)
 
 ### Rewards Contract
 - Contract: `rewards.clar`
@@ -272,10 +265,18 @@ All tests execute in isolated simnet environments with fresh state per test case
 
 ## Running the Tests
 
-1. Fork repository: [WELSH-STREET-contracts](https://github.com/WELSHSTREET/tests)
+The unit tests can be run by using `npm`. Make sure `npm` is installed on the system. In the file `./tests/vitestconfig.ts` the `disp` parameter may be set to `true` to view the test logs in the console.
+
+```ts
+export const disp = true;
+```
+
+**Follow these steps to run the tests:**
+
+1. Fork repository: [Welsh Street Contracts](https://github.com/welshstreet/contracts.git)
 
 ```bash copy filename="terminal"
-git clone https://github.com/WELSHSTREET/tests.git
+git clone https://github.com/welshstreet/contracts.git
 ```
 
 2. Install Dependencies

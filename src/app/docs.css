@@ -160,12 +160,16 @@ blockquote {
 }
 
 /* Centered equation-style blockquotes (used for math expressions) */
-blockquote.equation {
+.equation {
+  color: #9ca3af; /* Tailwind gray-400 */
+  font-style: italic;
   text-align: center;
   padding-top: 1rem;
   padding-bottom: 1rem;
   margin-left: auto;
   margin-right: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
   background-color: rgba(0, 0, 0, 0.5) !important;
 }
 

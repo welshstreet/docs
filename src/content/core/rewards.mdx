@@ -22,11 +22,11 @@ Explicitly, this index is the total rewards accumulated per 1 CREDIT LP token (f
 
 <br/>
 
-<blockquote className="equation">
+<div className="equation">
   unclaimed = lpBalance × (globalIndex − userIndex) / PRECISION
-</blockquote>
+</div>
 
-Where PRECISION is set to 9 decimal places, giving the rewards math three extra digits of fixed‑point precision beyond the usual 6‑decimal SIP‑010 tokens, which minimizes dust and rounding error in small reward distribution calculations.
+Where `PRECISION` is set to 9-decimal places, giving the rewards math three extra digits of fixed‑point precision beyond the usual 6‑decimal SIP‑010 tokens, which minimizes dust and rounding error in small reward distribution calculations.
 
 The system only adds to the global indexes; it never iterates over all users to distribute rewards.
 
@@ -36,7 +36,7 @@ When a user joins the system or their position is (re)registered, their `debt-a`
 
 ## Rewards Sources
 
-WELSH STREET distributions accumulate from three primary on-chain sources. 
+WELSH STREET distributions accumulate from three primary and one temporary on-chain sources. 
 
 ### Trading Fee Allocation
 
@@ -170,6 +170,66 @@ The `claim-rewards` function calculates how many WELSH and STREET tokens are cur
         amount-b: unclaimed-b,
         })  
     )
+  )
+)
+```
+</div>
+
+### Calculate Cleanup Rewards
+
+The `calculate-cleanup-rewards` function is an internal helper used only by `cleanup-rewards`. It compares the actual WELSH and STREET balances held by `street-rewards` to the amounts implied by `total-distributed-*` and `total-claimed-*`, computes any excess or sub‑threshold "dust" for each token, and returns how much should be swept back into the global indexes.
+
+<div className="code-transparent">
+```clarity
+(define-private (calculate-cleanup-rewards)
+  (let (
+
+    ;; token balances held by the street-rewards contract
+    (actual-a (unwrap! (contract-call? .welshcorgicoin get-balance .street-rewards) ERR_BALANCE))
+    (actual-b (unwrap! (contract-call? .street-token get-balance .street-rewards) ERR_BALANCE))
+    
+    ;; totals already claimed by users for each token
+    (claimed-a (var-get total-claimed-a))
+    (claimed-b (var-get total-claimed-b))
+    
+    ;; totals of all rewards added for each token (all sources)
+    (distributed-a (var-get total-distributed-a))
+    (distributed-b (var-get total-distributed-b))
+    
+    ;; cutoff below which tiny outstanding amounts are treated as dust
+    ;; dust-threshold is an absolute amount in token units (0.01)
+    (dust-threshold u10000)
+    
+    ;; amounts that accounting expects to still be in the pool
+    (outstanding-a (- distributed-a claimed-a))
+    (outstanding-b (- distributed-b claimed-b))
+    
+    ;; rewards to sweep back into the index math
+    (cleanup-a (if (> actual-a outstanding-a)
+                  (- actual-a outstanding-a)
+                  (if (and (is-eq actual-a outstanding-a)
+                          (< outstanding-a dust-threshold))
+                      actual-a
+                      u0)))
+    (cleanup-b (if (> actual-b outstanding-b)
+                  (- actual-b outstanding-b)
+                  (if (and (is-eq actual-b outstanding-b)
+                          (< outstanding-b dust-threshold))
+                      actual-b
+                      u0)))
+  )
+    (ok {
+      actual-a: actual-a,
+      actual-b: actual-b,
+      claimed-a: claimed-a,
+      claimed-b: claimed-b,
+      cleanup-a: cleanup-a,
+      cleanup-b: cleanup-b,
+      distributed-a: distributed-a,
+      distributed-b: distributed-b,
+      outstanding-a: outstanding-a,
+      outstanding-b: outstanding-b
+    })
   )
 )
 ```

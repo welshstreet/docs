@@ -1,262 +1,189 @@
-# Swap Functions
+import { Callout } from 'nextra/components'
 
-## Overview
+# Welsh Street Swaps
 
-Welsh Street utilizes Uniswap V2-style LP token model  This design choice creates significant advantages over existing Stacks exchanges:
-
-
-The WELSH STREET Exchange implements a **constant product Automated Market Maker (AMM)** with integrated fee distribution to liquidity providers. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH Corgi Coin (WELSH) and STREET Token (STREET) using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics.
-
-## Contract Architecture
-
-The exchange maintains dual reserve pools and implements a **fee system** where all fees go directly to liquidity providers:
-
-- **Swap Fees**: All trading fees are transferred to the rewards contract and distributed to liquidity providers
-- **No Protocol Revenue**: The exchange has no income stream; all fees benefit liquidity providers
-
-## Core Swap Functions
-
-### swap-a-b: WELSH → STREET Swap
-
-Exchanges WELSH tokens for STREET tokens using constant product AMM mechanics with integrated fee distribution.
-
-```clarity
-(define-public (swap-a-b (amount-a uint))
-  (let (
-    (res-a (var-get reserve-a))
-    (res-b (var-get reserve-b))
-    (lock-a (var-get locked-a))
-    (lock-b (var-get locked-b))
-    (fee-a (/ (* amount-a (var-get fee)) BASIS))
-    (amount-a-net (- amount-a fee-a))
-    (num (* amount-a-net res-b))
-    (den (+ res-a amount-a-net))
-    (amount-b (/ num den))
-    (amount-b-net amount-b)
-    (res-a-new (+ res-a amount-a-net))
-    (res-b-new (- res-b amount-b-net))
-    (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
-    (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
-  )
-    (begin
-      (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
-      (asserts! (> amount-b-net u0) ERR_INVALID_AMOUNT)
-      (try! (contract-call? .WELSHcorgicoin transfer amount-a tx-sender .exchange none))
-      (try! (transformer .WELSHcorgicoin fee-a .rewards))
-      (try! (transformer .STREET amount-b-net tx-sender))
-      (try! (contract-call? .rewards update-rewards-a fee-a))
-      (var-set reserve-a res-a-new)
-      (var-set reserve-b res-b-new)
-      (var-set locked-a lock-a-new)
-      (var-set locked-b lock-b-new)
-      (ok {
-        amount-in: amount-a,
-        amount-out: amount-b-net,
-        fee-a: fee-a,
-        res-a: res-a,
-        res-a-new: res-a-new,
-        res-b: res-b,
-        res-b-new: res-b-new })
-      )
-    )
-  )
-```
-
-**Parameters:**
-- `amount-a`: Amount of WELSH tokens to swap (in natural units)
-
-**AMM Calculation Formula:**
-The swap uses the constant product formula with fee deduction:
-```
-amount-a-net = amount-a - fee-total
-amount-b = (amount-a-net * res-b) / (res-a + amount-a-net)
-```
-
-**Fee Distribution:**
-- **Fee Component (`fee-a`)**: `(amount-a * fee) / BASIS` → All fees sent to rewards contract for liquidity provider distribution
-- **Net Input**: `amount-a-net = amount-a - fee-total` → Added to WELSH reserves
-
-**Returns:**
-- `amount-in`: Input WELSH token amount
-- `amount-out`: Output STREET token amount received by user
-- `fee-a`: WELSH tokens allocated to liquidity provider rewards
-- `res-a`/`res-a-new`: WELSH reserve amounts (before/after swap)
-- `res-b`/`res-b-new`: STREET reserve amounts (before/after swap)
-
-**Requirements:**
-- Input amount must be greater than zero
-- Output amount must be greater than zero (prevents zero-output swaps)
-- User must have sufficient WELSH token balance
-- Liquidity pool must be initialized
+Welsh Street implements a constant product Automated Market Maker (AMM) with integrated fee distribution to liquidity providers. The swap functions `swap-a-b` and `swap-b-a` enable bidirectional token swapping between WELSH and STREET using the mathematical formula `x * y = k`, where liquidity is preserved through constant product mechanics. In decentralized finance, this type of AMM is commonly referred to as a Uniswap-V2 Liquidity pool.
 
 ## Swap Mechanics
 
-### Constant Product AMM
+The Welsh Street Exchange implements the*constant product formula:
 
-The WELSH STREET Exchange implements the **constant product formula**:
-```
+<br/>
+
+<div className="equation">
 x * y = k
-```
+</div>
 
 Where:
 - `x` = WELSH token reserves (`reserve-a`)
 - `y` = STREET token reserves (`reserve-b`) 
 - `k` = Constant product (maintained across swaps)
 
-### Slippage and Price Impact
+In practice this means the trade is always directly against the pooled reserves, not an orderbook: the price quoted get is fully determined by the current pool balances, and larger trades move the price more price impact or slippage.
 
-**Price Impact Calculation:**
-Price impact increases with swap size relative to pool depth. Larger swaps experience higher slippage due to the constant product curve.
+The swap math is calculated using the total reserves in the liquidity pool. Every trade updates the pool reserves and the locked liquidity so the locked liquidity ratios remain the same as reserves.  This is a key mechanism to track locked-liquidity!
 
-**Slippage Formula:**
+## Share Fee
+
+The exchange implements a fee system where all swap fees are transferred into the rewards contract and then distributed to liquidity providers, with no protocol revenue retained by the exchange itself. Every unit of trading fee flows back to liquidity providers via the rewards mechanism, so the system has no separate income stream and all fee value ultimately accrues to the LPs.
+
+<Callout type="info">All swaps fees are shared rewards among CREDIT holders.</Callout>
+
+## Swap Functions
+
+<div className="code-transparent">
 ```clarity
-price-impact = 1 - (output-amount / (input-amount * current-rate))
+(define-public (swap-a-b (amount-a uint))
+  (let (
+    ;; current locked balances for each side of the pool
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    
+    ;; current pool reserves before the swap
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+    
+    ;; fee charged on the incoming WELSH amount
+    (fee-a (/ (* amount-a FEE) BASIS))
+    
+    ;; user's effective input after subtracting the fee
+    (amount-a-net (- amount-a fee-a))
+    
+    ;; numerator and denominator for the constant-product pricing formula
+    (num (* amount-a-net res-b))
+    (den (+ res-a amount-a-net))
+    
+    ;; STREET output amount implied by the constant-product curve
+    (amount-b (/ num den))
+    
+    ;; new pool reserves after applying net input and output
+    (res-a-new (+ res-a amount-a-net))
+    (res-b-new (- res-b amount-b))
+    
+    ;; rescale locked balances to stay proportional to new reserves
+    (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
+    (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
+  )
+    (begin
+      (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
+      (asserts! (> amount-b u0) ERR_INVALID_AMOUNT)
+      (asserts! (and (> res-a u0) (> res-b u0)) ERR_NOT_INITIALIZED)
+      
+      ;; pull input WELSH from user into the market contract
+      (try! (contract-call? .welshcorgicoin transfer amount-a contract-caller .street-market none))
+      
+      ;; route the WELSH fee portion into the rewards contract
+      (try! (transformer .welshcorgicoin fee-a .street-rewards))
+      
+      ;; send STREET output tokens to the user
+      (try! (transformer .street-token amount-b contract-caller))
+      
+      ;; inject the collected WELSH fee into the rewards index for token-a
+      (try! (contract-call? .street-rewards update-rewards-a fee-a))
+      
+      ;; persist updated pool reserves after the swap
+      (var-set reserve-a res-a-new)
+      (var-set reserve-b res-b-new)
+      
+      ;; persist updated locked balances aligned with new reserves
+      (var-set locked-a lock-a-new)
+      (var-set locked-b lock-b-new)
+      
+      (ok {
+        amount-a: amount-a,
+        amount-b: amount-b,
+        fee-a: fee-a,
+        res-a: res-a,
+        res-a-new: res-a-new,
+        res-b: res-b,
+        res-b-new: res-b-new
+      })
+    )
+  )
+)
+
+(define-public (swap-b-a (amount-b uint))
+  (let (
+    ;; current locked balances for each side of the pool
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    
+    ;; current pool reserves before the swap
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+    
+    ;; fee charged on the incoming STREET amount
+    (fee-b (/ (* amount-b FEE) BASIS))
+    
+    ;; user's effective input after subtracting the fee
+    (amount-b-net (- amount-b fee-b))
+    
+    ;; numerator and denominator for the constant-product pricing formula
+    (num (* amount-b-net res-a))
+    (den (+ res-b amount-b-net))
+    
+    ;; WELSH output amount implied by the constant-product curve
+    (amount-a (/ num den))
+    
+    ;; new pool reserves after applying net input and output
+    (res-a-new (- res-a amount-a))
+    (res-b-new (+ res-b amount-b-net))
+    
+    ;; rescale locked balances to stay proportional to new reserves
+    (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
+    (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
+  )
+    (begin
+      (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
+      (asserts! (> amount-a u0) ERR_INVALID_AMOUNT)
+      (asserts! (and (> res-a u0) (> res-b u0)) ERR_NOT_INITIALIZED)
+      
+      ;; pull input STREET from user into the market contract
+      (try! (contract-call? .street-token transfer amount-b contract-caller .street-market none))
+      
+      ;; route the STREET fee portion into the rewards contract
+      (try! (transformer .street-token fee-b .street-rewards))
+      
+      ;; send WELSH output tokens to the user
+      (try! (transformer .welshcorgicoin amount-a contract-caller))
+      
+      ;; inject the collected STREET fee into the rewards index for token-b
+      (try! (contract-call? .street-rewards update-rewards-b fee-b))
+      
+      ;; persist updated pool reserves after the swap
+      (var-set reserve-a res-a-new)
+      (var-set reserve-b res-b-new)
+      
+      ;; persist updated locked balances aligned with new reserves
+      (var-set locked-a lock-a-new)
+      (var-set locked-b lock-b-new)
+      
+      (ok {
+        amount-a: amount-a,
+        amount-b: amount-b,
+        fee-b: fee-b,
+        res-a: res-a,
+        res-a-new: res-a-new,
+        res-b: res-b,
+        res-b-new: res-b-new
+      })
+    )
+  )
+)
 ```
+</div>
 
-### Reserve Updates
+## Price Impact
 
-**Reserve Management:**
-- **WELSH Reserves**: Updated with net input amount (after fees) for both swap directions
-- **STREET Reserves**: Updated with net input amount (after fees) for both swap directions
-- **Atomic Updates**: Both reserves updated atomically to maintain consistency
+Price impact is calculated only on the frontend as an informational warning; the on-chain swap contracts do not compute or enforce any price-impact logic. The UI compares the *execution price* of the trade (output received per unit of effective input after fees) to the *spot price* implied by the current reserves, and reports the percentage difference:
 
-## Integration Points
+<br/>
 
-### Distribution System Integration
+<div className="equation">
+price impact ≈ 1 − ( execution price / spot price )
+</div>
 
-**Automatic Token Distribution:**
-```clarity
-;; Fee allocation to distributions
-(try! (transformer .WELSHcorgicoin fee-a .rewards))
-(try! (contract-call? .rewards update-rewards-a fee-a))
-```
-
-**Benefits:**
-- **Zero Dilution**: Existing LP holders receive proportional distributions immediately  
-- **High Precision**: 9-decimal precision prevents rounding losses
-- **Automatic Updates**: No manual intervention required for token distribution
-
-## Error Handling
-
-### Error Constants
-
-```clarity
-(define-constant ERR_ZERO_AMOUNT (err u700))
-```
-
-**Swap-Specific Validations:**
-- **Input Validation**: Prevents zero-amount swaps
-- **Output Validation**: Prevents zero-output scenarios (insufficient liquidity)
-- **Balance Validation**: Ensures sufficient user token balance
-- **Reserve Validation**: Implicitly checks for initialized liquidity pools
-
-### Edge Case Handling
-
-**Slippage Protection:**
-Users should implement slippage tolerance in their applications by:
-1. Calculating expected output using current reserves
-2. Setting minimum acceptable output amount
-3. Comparing actual output with expectations
-
-**Liquidity Depth Considerations:**
-- Small pools: Higher price impact for large swaps
-- Large pools: Lower price impact, better capital efficiency
-- Zero liquidity: Swaps will fail with ERR_ZERO_AMOUNT
-
-## Mathematical Properties
-
-### Constant Product Preservation
-
-**Invariant Maintenance:**
-```clarity
-;; Before swap: reserve-a * reserve-b = k
-;; After swap: (reserve-a + amount-a-net) * (reserve-b - amount-b-net) = k
-```
-
-**Fee Impact on Reserves:**
-Fees are extracted before the constant product calculation, ensuring:
-1. Liquidity providers receive genuine rewards
-2. AMM mechanics remain mathematically sound
-
-### Arbitrage Resistance
-
-**Price Discovery:**
-The constant product curve creates natural arbitrage opportunities that:
-- Align exchange prices with external markets
-- Provide MEV opportunities for arbitrageurs
-- Generate additional volume and fees for LP holders
-
-## Security Features
-
-### Access Controls
-
-**Public Functions:**
-- Both swap functions are publicly accessible
-- No special permissions required for swapping
-
-**Immutable Parameters:**
-- Swap fee fixed at 1% (immutable)
-- Exit tax fixed at 1% (immutable)
-- All fees benefit liquidity providers only
-
-### Economic Security
-
-**MEV Protection:**
-- Transparent fee structure prevents hidden extraction
-- Predictable slippage based on mathematical formulas
-
-**Liquidity Protection:**
-- Constant product formula prevents reserve depletion
-- Immutable 1% fee ensures sustainable rewards
-- All fees distributed to liquidity providers
-
-## Usage Examples
-
-### Basic WELSH → STREET Swap
-
-```clarity
-;; Swap 1,000 WELSH tokens for STREET tokens
-(contract-call? .exchange swap-a-b u1000000000) ;; 1,000 tokens (6 decimals)
-
-;; Expected behavior:
-;; 1. Deducts 1% fee (10 WELSH tokens)
-;; 2. Uses 990 WELSH for constant product calculation
-;; 3. Returns calculated STREET tokens to user
-;; 4. Distributes 10 WELSH to liquidity providers via rewards contract
-```
-
-### Basic STREET → WELSH Swap
-
-```clarity
-;; Swap 100,000 STREET tokens for WELSH tokens  
-(contract-call? .exchange swap-b-a u100000000000) ;; 100,000 tokens (6 decimals)
-
-;; Expected behavior:
-;; 1. Deducts 1% fee (1,000 STREET tokens)
-;; 2. Uses 99,000 STREET for constant product calculation
-;; 3. Returns calculated WELSH tokens to user
-;; 4. Distributes 1,000 STREET to liquidity providers via rewards contract
-```
+A higher percentage means the trade is moving the market more (larger slippage). The slippage settings then turn this into protection: the frontend uses chosen tolerance to build post conditions for the transaction, so if the on-chain outcome would exceed the allowed slippage or fee bounds the transaction fails instead of filling at a worse price. The exact post-condition mechanics are described in the next section, User Protection.
 
 
-
-
-
-### 1. Swap Fee Share
-
-**Purpose**: Shared trading fees distributed to liquidity providers through the distribution contract.
-
-**Destination**: Transferred directly to the `.rewards` contract and distributed to liquidity providers.
-
-**Implementation in Swaps**:
-
-```clarity
-(fee-a (/ (* amount-a (var-get fee)) BASIS))
-
-;; Fee distribution in swap-a-b
-(try! (transformer .WELSHcorgicoin fee-a .rewards))  ;; Fee goes to rewards
-(try! (contract-call? .rewards update-rewards-a fee-a))
-```
-
-**Security**: These funds are permanently allocated to LP distributions and cannot be accessed by the contract owner.
 

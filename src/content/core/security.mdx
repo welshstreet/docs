@@ -69,8 +69,7 @@ Our comprehensive security review covers five critical areas:
 3. **`STREET-rewards.clar`** - LP reward distribution system
 4. **`CREDIT-token.clar`** - LP token contract implementing SIP-010
 5. **`CREDIT-controller.clar`** - Transfer controller that facilitates CREDIT-token transfers and reward updates
-6. **`genesis.clar`** - Liquidity Generation Event contract
-7. **`faucet.clar`** - Testnet faucet for distributing WELSHcorgicoin to beta testers
+6. **`faucet.clar`** - Testnet faucet for distributing WELSHcorgicoin to beta testers
 
 ### Excluded from Scope
 - **`WELSHcorgicoin.clar`** - Pre-existing mainnet contract (battle-tested, cannot be modified)
@@ -158,7 +157,6 @@ The exchange implements immutable economic parameters as a security feature:
 - **Governance Ready:** Supports seamless transition from individual to multi-sig to DAO governance
 - **Migration Testing:** 6 comprehensive ownership transfer tests validating operational continuity
 - **Anti-Redundancy Controls:** Prevents accidental same-owner transfers with proper error handling
-- **Contract Coverage:** 4 of 5 contracts updated (genesis excluded as temporary LGE contract)
 
 ## Risk Assessment Summary
 
@@ -237,22 +235,6 @@ The protocol showcases several  DeFi innovations:
 | `get-last-request` | Read-only | `user` | ✅ **SECURE** |
 | `get-next-request` | Read-only | `user` | ✅ **SECURE** |
 | `get-faucet-info` | Read-only | `user` | ✅ **SECURE** |
-
-### Genesis Contract (`genesis.clar`)
-
-| Function | Type | Parameters | Security Audit Status |
-|----------|------|------------|----------------------|
-| `claim` | Public | None | ✅ **SECURE** |
-| `contribute` | Public | `amount` | ✅ **SECURE** |
-| `withdrawal` | Public | None | ✅ **SECURE** |
-| `transformer` | Private | `token`, `amount`, `recipient` | ✅ **SECURE** |
-| `get-blocks` | Read-only | None | ✅ **SECURE** |
-| `set-claim-active` | Public | None | ✅ **SECURE** |
-| `set-contribute-active` | Public | None | ✅ **SECURE** |
-| `get-claim-active` | Read-only | None | ✅ **SECURE** |
-| `get-contribute-active` | Read-only | None | ✅ **SECURE** |
-| `get-total-contribution` | Read-only | None | ✅ **SECURE** |
-| `get-user-balance` | Read-only | `address` | ✅ **SECURE** |
 
 ### STREET Market Contract (`STREET-market.clar`)
 

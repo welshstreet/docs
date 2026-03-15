@@ -12,10 +12,10 @@ Post-conditions are not Clarity code. They are attached to the signed transactio
 
 ### Stacks API ↔ Contract Runtime
 
-- Client / API (tx building): The wallet or app constructs the transaction and attaches post-conditions using Stacks SDK helpers (e.g., `makeStandardFungiblePostCondition`, `makeContractFungiblePostCondition`). It broadcasts via the Stacks node API.
+- Client / API (tx building): The wallet or app constructs the transaction and attaches post-conditions using Stacks SDK helpers. It broadcasts via the Stacks node API.
 - Chain / Runtime (enforcement): When our Clarity `swap` (or similar) function executes, the VM tracks real asset deltas for principals mentioned in the post-conditions. At the end, it checks those deltas against our declared bounds. If any bound fails, the transaction reverts.
 
-In short: Clarity executes the swap; the Stacks runtime enforces the promises your transaction makes about asset movements.
+In short: Clarity executes the swap; the Stacks runtime enforces the promises a transaction makes about asset movements.
 
 ## Slippage (Upper & Lower Bounds)
 
@@ -35,6 +35,14 @@ In the WELSH STREET Exchange, the upper and lower bounds of the post-conditions 
 
 Because post-conditions live on the transaction, these guardrails don’t bloat the contract with extra branching, keeping it lightweight, gas-efficient, and fast.
 
+**Price Impact Calculation:**
+Price impact increases with swap size relative to pool depth. Larger swaps experience higher slippage due to the constant product curve.
+
+**Slippage Formula:**
+```clarity
+price-impact = 1 - (output-amount / (input-amount * current-rate))
+```
+
 ## A Stacks Superpower
 
 On many chains, “slippage” is just a UI field or ad‑hoc contract logic — extra code paths, higher gas, and more audit surface. Stacks elevates execution guarantees to the transaction layer: cryptographically enforced, chain-native, and composable. Builders get lean, auditable code while users get protocol‑level safety rails.
@@ -44,7 +52,7 @@ Our AMM uses slippage as upper and lower bounds to protect traders and LPs, deli
 ### Threats & How Post-Conditions Help
 
 - MEV Sandwiching:
-  If front/back-running pushes price outside your declared bounds, your min‑out / max‑in conditions fail. No toxic fill.
+  If front/back-running pushes price outside a user’s declared bounds, the user’s min‑out / max‑in conditions fail. No toxic fill.
 
 - Extreme Market Conditions (spikes, liquidity shocks):
   Rapid swings can’t slip your fill beyond what you allowed. The tx either meets your bounds or safely reverts.
@@ -58,28 +66,28 @@ Our AMM uses slippage as upper and lower bounds to protect traders and LPs, deli
 
 ### Example 1 — Massive Move
 
-> A whale submits a huge swap that is in the mempool, but your quote is based on the previous state. You submit your trade right after.
+> A whale submits a huge swap that is in the mempool, but the user’s quote is based on the previous state. The user submits a trade right after.
 
-- Your tx post-conditions (attached by your wallet):
-  - Spend ≤ 1,000 A (`LessEqual` on your standard principal for token A)
+- The user’s tx post-conditions (attached by the user’s wallet):
+  - Spend ≤ 1,000 A (`LessEqual` on the user’s standard principal for token A)
   - Pool must send ≥ 480 B (`GreaterEqual` on the AMM contract principal for token B)
 
 Two possible outcomes at commit time:
 
 1. Whale confirms first → price moves down.
-   Re-evaluating your tx against the new pool state yields only 430 B for your 1,000 A.
-   - The “pool sends ≥ 480 B” condition fails → transaction reverts.
-   - You keep your A, pay no fees, no partial fills.
+  Re-evaluating the user’s tx against the new pool state yields only 430 B for the 1,000 A input.
+  - The “pool sends ≥ 480 B” condition fails → transaction reverts.
+  - The user keeps token A, pays no fees, and receives no partial fills.
 
-2. Whale confirms after you (or not at all).
-   The current state still supports ≥ 480 B out.
-   - Both conditions pass → transaction executes and you receive at least your promised amount.
+2. Whale confirms after the user (or not at all).
+  The current state still supports ≥ 480 B out.
+  - Both conditions pass → transaction executes and the user receives at least the promised amount.
 
-<Callout type="default">You never receive a worse-than-agreed price, even if state changes between signing and confirmation.</Callout>
+<Callout type="default">The user never receives a worse-than-agreed price, even if state changes between signing and confirmation.</Callout>
 
 ### Example 2 — Anti-Windfall
 
-> Due to a sudden oracle misread off-chain or a pending arbitrage, your quote could—momentarily—suggest an outsized payout.
+> Due to a sudden oracle misread off-chain or a pending arbitrage, a quote could—momentarily—suggest an outsized payout.
 
 - AMM sets a pool-side post-condition for swaps routed through the contract:
   “Pool will not send more than Z B for this trade.”
@@ -104,4 +112,4 @@ Two possible outcomes at commit time:
 - Better UX: Users and LPs get deterministic, enforceable bounds on price, payout, and fees.
 - Enhanced Protection: Protect users and LPs from windfalls, massive moves and extreme volatility
 
-<Callout type="info">Bottom line: Post-conditions and Slippage keep our users AND liquidity pool safe </Callout>
+<Callout type="info">Post-conditions and Slippage help keep our users and liquidity pool safe </Callout>
