@@ -4,6 +4,11 @@
   --orange: #ff6b35;
   --blue: #60a5fa;
   --purple: #c084fc;
+  --red: #ef4444;
+  --green: #22c55e;
+  --red-rgb: 239, 68, 68;
+  --green-rgb: 34, 197, 94;
+  --dark: rgba(0, 0, 0, 0.9);
 }
 
 /* Force dark mode always */
@@ -90,7 +95,7 @@ table {
 }
 
 table th {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--dark);
   padding: 0.75rem 1rem;
   font-weight: 600;
   border-bottom: 2px solid rgba(255, 255, 255, 0.2);
@@ -112,13 +117,33 @@ table.pros-cons tr:hover {
 
 table.pros-cons tr:hover th.pros,
 table.pros-cons tr:hover td.pros {
-  background-color: rgba(34, 197, 94, 0.15);
+  background-color: rgba(var(--green-rgb), 0.15);
 }
 
 table.pros-cons tr:hover th.cons,
 table.pros-cons tr:hover td.cons {
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: rgba(var(--red-rgb), 0.15);
 }
+
+/* Summary table neutral column hover (orange) */
+table.summary-table.pros-cons tr:hover th.neutral,
+table.summary-table.pros-cons tr:hover td.neutral {
+  background-color: rgba(255, 107, 53, 0.15);
+}
+
+/* Advantage table styling - green hover */
+table.advantage tr:hover,
+.advantage table tr:hover {
+  background-color: rgba(var(--green-rgb), 0.15) !important;
+}
+
+/* Disadvantage table styling - red hover */
+table.disadvantage tr:hover,
+.disadvantage table tr:hover {
+  background-color: rgba(var(--red-rgb), 0.15) !important;
+}
+
+/* Summary tables reuse pros/cons styling via .pros and .cons classes */
 
 /* Optional: wrap fenced blocks in <div className="code-transparent"> */
 .code-transparent pre,
@@ -127,19 +152,21 @@ pre.code-transparent {
   background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Blockquote styling - no left border, right-align attribution */
+/* Blockquote styling - no left border, italic dark gray text */
 blockquote {
   border-left: none !important;
+  color: #9ca3af !important; /* Tailwind gray-400 */
+  font-style: italic;
 }
 
-/* Advantage table styling - green hover */
-.advantage table tr:hover {
-  background-color: rgba(34, 197, 94, 0.15) !important;
-}
-
-/* Disadvantage table styling - red hover */
-.disadvantage table tr:hover {
-  background-color: rgba(239, 68, 68, 0.15) !important;
+/* Centered equation-style blockquotes (used for math expressions) */
+blockquote.equation {
+  text-align: center;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Logo Card Styling */
