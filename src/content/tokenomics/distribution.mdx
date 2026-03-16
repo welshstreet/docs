@@ -65,32 +65,60 @@ The `street-controller` contract controls the minting of STREET, collection of W
 <div className="code-transparent">
 ```clarity
 ;; constants
-(define-constant MINT_BONUS  u1000000000000) ;; every 21 NFTS
-(define-constant MINT_STREET  u100000000000) ;; standard mint amount
-(define-constant DONATE_WELSH   u1000000000) ;; welsh donation to mint
-(define-constant MINT_CAP            u21000) ;; maximum supply of 21000 NFTs
+
+;; Milestone bonus: 1,000,000 STREET (with 6 decimals) awarded at every 21st mint
+(define-constant MINT_BONUS  u1000000000000)
+
+;; Standard mint: 100,000 STREET (with 6 decimals) awarded at positions 1-20 in each cycle
+(define-constant MINT_STREET  u100000000000)
+
+;; Required donation: 1,000 WELSH (with 6 decimals) to mint an NFT and receive STREET
+(define-constant DONATE_WELSH   u1000000000)
+
+;; Maximum supply: 21,000 total NFTs can be minted (1,000 cycles of 21 mints each)
+(define-constant MINT_CAP            u21000)
 
 ;; variables
 (define-data-var mint-count uint u0)
 
+;; Track mints per user: maps user address to number of NFTs minted (max 2 per user)
 (define-map users principal uint)
 
 (define-public (mint)
   (let (
+      ;; Get the user's current WELSH balance to verify they have enough to donate
       (user-welsh (unwrap-panic (contract-call? .welshcorgicoin get-balance tx-sender)))
+      
+      ;; Increment the global mint count to determine this mint's position number
       (count (+ (var-get mint-count) u1))
+      
+      ;; Check if this is a milestone mint (every 21st position gets bonus)
       (is-milestone (is-eq (mod count u21) u0))
+      
+      ;; Determine STREET amount: 1M for milestone, 100K for standard
       (mint-amount (if is-milestone MINT_BONUS MINT_STREET))
     )
     (begin
       (asserts! (>= user-welsh DONATE_WELSH) ERR_YOU_POOR)
       (asserts! (< (default-to u0 (map-get? users tx-sender)) u2) ERR_ALREADY_MINTED)
       (asserts! (<= count MINT_CAP) ERR_MINT_CAP)
+      
+      ;; Mint STREET tokens to the user (either 100K or 1M depending on position)
       (try! (contract-call? .street-token mint mint-amount tx-sender))
+      
+      ;; Mint the Genesis NFT with the current token ID to the user
       (try! (contract-call? .street-nft mint count tx-sender))
+      
+      ;; Transfer 1,000 WELSH from the user to the rewards pool contract
       (try! (contract-call? .welshcorgicoin transfer DONATE_WELSH tx-sender .street-rewards none))
+      
+      ;; Update the rewards pool accounting with the new WELSH donation
       (try! (contract-call? .street-rewards update-rewards-a DONATE_WELSH))
+      
+      ;; Increment the user's mint count in the tracking map
       (map-set users tx-sender (+ (default-to u0 (map-get? users tx-sender)) u1))
+      
+      ;; Update the global mint counter to reflect this mint
       (var-set mint-count count)
     )
   )
@@ -104,15 +132,24 @@ The `street-nft` contract mints the NFTs for the Welsh Street Genesis NFT event
 
 <div className="code-transparent">
 ```clarity
-;; public functions
+
+;; Track NFT ownership: maps user address to a list of their token IDs (max 2 per user)
+(define-map users principal (list 2 uint))
+
 (define-public (mint (token-id uint) (recipient principal))
+  
+  ;; Get the user's existing NFT token IDs, or empty list if they have none
   (let ((existing-tokens (default-to (list) (map-get? users recipient))))
     (begin
       (asserts! (is-eq contract-caller .street-controller) ERR_NOT_AUTHORIZED)
-      (asserts! (<= token-id MINT_CAP) ERR_MINT_CAP)
+      
+      ;; Mint the Genesis NFT with the specified token ID to the recipient
       (try! (nft-mint? welsh-street-genesis-nft token-id recipient))
+      
+      ;; Add the new token ID to the user's list of owned NFTs (enforcing max 2)
       (map-set users recipient (unwrap-panic (as-max-len? (append existing-tokens token-id) u2)))
-      (ok token-id)
+      
+      (ok true)
     )
   )
 )

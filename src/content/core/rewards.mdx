@@ -302,8 +302,7 @@ The function handles two cases where it either reinitializes the user’s snapsh
     (global-b (var-get global-index-b))
     
     ;; user's stored state
-    ;; error check because user state must exist to decrease rewards
-    (info (unwrap! (map-get? users { account: user }) ERR_NO_USER_STATE))
+    (info (unwrap-panic (map-get? users { account: user })))
     
     ;; total CREDIT supply
     (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
@@ -487,8 +486,8 @@ If a user had no prior rewards snapshot, `increase-rewards` initializes a fresh 
       (if (is-some info)
         (let (
           
-          ;; unwrap stored user record from the option
-          (data (unwrap! info ERR_NO_USER_STATE))
+          ;; unwrap stored user record
+          (data (unwrap-panic info))
           
           ;; previously claimed amounts (debt) for each token
           (debt-a (get debt-a data))
