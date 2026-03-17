@@ -9,4 +9,5 @@ export default {
   risk: '',
   terms: '',
   core: 'Welsh Street Core',
+  security: 'Security Audit',
 }

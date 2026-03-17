@@ -1,0 +1,181 @@
+import { Callout } from 'nextra/components'
+
+# Street NFT Audit
+
+## Description
+
+The street NFT is the genesis NFT collection for the Welsh Street Exchange. It is minted exclusively through `street-controller` during the STREET token distribution phase — each `street-controller.mint` call mints one NFT to the caller alongside their STREET tokens. The `users` map tracks token IDs per principal with a hard cap of 2, mirroring `street-controller`'s per-user mint limit. Transfers use direct `contract-caller` authorization — only the token owner can transfer, with no intermediary or operator pattern.
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | Users map not updated on transfer | Informational | By Design |
+| I-03 | unwrap-panic on as-max-len? in mint | Informational | By Design |
+| I-04 | Mutable base URI for NFT metadata | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** Low — the contract owner controls only `set-contract-owner` and `set-base-uri`. No ability to mint, burn, or transfer tokens.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+
+### [I-02] Users map not updated on transfer
+
+- **Severity:** Informational
+- **Location:** `transfer`, `users` map
+- **Description:** The `users` map records which token IDs were minted to each principal and is only written during `mint`. When an NFT is transferred via `transfer`, the `users` map is not updated — the original minter retains the entry, and the recipient has no entry (or retains their own minting record). `get-user-minted-tokens` reflects minting history, not current ownership.
+- **Impact:** None for on-chain security — `nft-get-owner?` is the authoritative ownership source and is checked in `transfer` and `get-owner`. The `users` map serves as a minting log for the `street-controller` flow, not an ownership registry. The chain tracks all subsequent ownership transfers natively.
+- **Status:** By design. Both `street-controller` and `street-nft` are only concerned with the initial mint. Post-mint ownership is tracked by the chain.
+
+### [I-03] unwrap-panic on as-max-len? in mint
+
+- **Severity:** Informational
+- **Location:** `mint`
+- **Description:** `(unwrap-panic (as-max-len? (append existing-tokens token-id) u2))` will abort the transaction if a user somehow has 2 existing tokens and attempts a third append. In practice this is unreachable — `street-controller` enforces `ERR_ALREADY_MINTED` (max 2 mints per user) before calling `street-nft.mint`, and only `street-controller` can call this function.
+- **Impact:** None — the panic path is guarded by the caller's own validation. Even if `street-controller` were replaced, `nft-mint?` would fail on duplicate `token-id` before reaching the `map-set`.
+- **Status:** Accepted. Defense in depth — caller validates, but the `unwrap-panic` is structurally safe.
+
+### [I-04] Mutable base URI for NFT metadata
+
+- **Severity:** Informational
+- **Location:** `set-base-uri`, `base-uri` variable
+- **Description:** The contract owner can change the base URI for all NFT metadata at any time via `set-base-uri`. This means token URIs returned by `get-token-uri` can be redirected post-mint.
+- **Impact:** Cosmetic — metadata changes do not affect on-chain ownership, transferability, or any protocol economic function.
+- **Status:** By design. Owner retains metadata control for future IPFS migrations.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `mint` gated to `.street-controller`. `transfer` enforces caller-is-sender. Admin functions gated by `contract-owner`. |
+| 2 | Input Validation | Pass — `token-id` validated by `nft-mint?` (rejects duplicates) and `nft-get-owner?` (rejects non-existent). No raw user inputs require bounds checking. |
+| 3 | Arithmetic | N/A — no arithmetic operations. |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. `nft-mint?` and `map-set` execute atomically; if `nft-mint?` fails, `map-set` never runs. |
+| 5 | Asset Safety | Pass — owner cannot mint, burn, or transfer NFTs. Only `street-controller` can mint. Only the token holder can transfer. No burn function exists. |
+| 6 | Trait Usage | N/A — no trait parameters. SIP-009 trait implementation was originally planned but abandoned — the split responsibility between `street-controller` (minting logic) and `street-nft` (token storage) was incompatible with the standard. |
+| 7 | Authorization Chains | Pass — `mint` uses `contract-caller` (verifies `.street-controller`). `transfer` uses `contract-caller` to verify sender identity — prevents intermediary contracts from transferring on behalf of users. |
+| 8 | State Consistency | Pass — `nft-mint?` and `map-set users` are atomic. `nft-transfer?` is atomic. No partial state risk. |
+| 9 | Denial of Service | Pass — no blocking conditions. Transfers are unrestricted for valid owners. Minting is bounded by `street-controller`'s finite supply (21,000 cap). |
+| 10 | Upgrade / Migration | Informational — single-step ownership transfer (see I-01). Mutable base URI (see I-04). |
+
+## Recommendations
+
+No code changes recommended. All four findings are informational observations on intentional design.
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Genesis NFT
+
+;; NFT collection — uint token IDs assigned sequentially by street-controller's mint counter
+(define-non-fungible-token welsh-street-genesis-nft uint)
+
+;; errors
+;; 4 unique error codes with u96x prefix — all tested, no overlap with other contracts
+(define-constant ERR_NOT_CONTRACT_OWNER (err u961))
+(define-constant ERR_NOT_AUTHORIZED (err u962))
+(define-constant ERR_NOT_FOUND (err u963))
+(define-constant ERR_NOT_OWNER (err u964))
+
+;; variables
+
+;; IPFS-hosted metadata base path — mutable by contract owner (see I-04)
+(define-data-var base-uri (string-ascii 256) "https://ipfs.io/ipfs/bafybeifgnlibngkzvd6nfryu57kf54logbj5dbbcvmznc45hv47pkxzjli/")
+
+;; initialized to deployer at deployment — transferable via set-contract-owner
+(define-data-var contract-owner principal tx-sender)
+
+;; minting log — tracks token IDs minted per principal, max 2 entries (see I-02)
+;; not updated on transfer — reflects minting history, not current ownership
+(define-map users principal (list 2 uint))
+
+;; mints one NFT to recipient — callable only by street-controller
+(define-public (mint (token-id uint) (recipient principal))
+  (let ((existing-tokens (default-to (list) (map-get? users recipient))))
+    (begin
+      ;; only street-controller can mint — prevents direct minting by any user or owner
+      (asserts! (is-eq contract-caller .street-controller) ERR_NOT_AUTHORIZED)
+
+      ;; nft-mint? fails if token-id already exists — prevents duplicate IDs
+      (try! (nft-mint? welsh-street-genesis-nft token-id recipient))
+
+      ;; append new token-id to user's minting record
+      ;; unwrap-panic is safe — street-controller limits each user to 2 mints,
+      ;; so existing-tokens has at most 1 entry when this runs (see I-03)
+      (map-set users recipient (unwrap-panic (as-max-len? (append existing-tokens token-id) u2)))
+      (ok true)
+    )
+  )
+)
+
+;; direct transfer — only the token owner can transfer, no operator/approval pattern
+(define-public (transfer (token-id uint) (sender principal) (recipient principal))
+  (let ((owner (unwrap! (nft-get-owner? welsh-street-genesis-nft token-id) ERR_NOT_FOUND)))
+    (begin
+      ;; verifies sender parameter matches actual on-chain owner
+      (asserts! (is-eq owner sender) ERR_NOT_OWNER)
+
+      ;; contract-caller must be sender — prevents intermediary contracts from
+      ;; transferring on behalf of users without direct invocation
+      (asserts! (is-eq contract-caller sender) ERR_NOT_AUTHORIZED)
+
+      ;; nft-transfer? is atomic — fails if sender doesn't own token (redundant with above checks)
+      ;; users map is NOT updated here — minting log only (see I-02)
+      (try! (nft-transfer? welsh-street-genesis-nft token-id sender recipient))
+      (ok true)
+    )
+  )
+)
+
+;; single-step ownership transfer — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — only direct caller, not tx-sender chain
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+
+    ;; irreversible if transferred to wrong address — owner controls only metadata and this function
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; updates IPFS metadata base URI — cosmetic only, no economic impact (see I-04)
+(define-public (set-base-uri (new-uri (string-ascii 256)))
+  (begin
+    ;; owner-only — same contract-caller pattern as set-contract-owner
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set base-uri new-uri)
+    (ok true)
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — no access control needed ===
+
+;; returns current contract owner — public information
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+;; returns on-chain NFT owner — authoritative ownership source (not the users map)
+(define-read-only (get-owner (token-id uint))
+  (ok (nft-get-owner? welsh-street-genesis-nft token-id)))
+
+;; constructs token URI from mutable base-uri + token-id + ".json"
+;; returns (some ...) for any token-id — does not validate existence
+(define-read-only (get-token-uri (token-id uint))
+  (ok (some (concat (concat (var-get base-uri) (int-to-ascii token-id)) ".json"))))
+
+;; returns current base URI configuration
+(define-read-only (get-base-uri)
+  (ok (var-get base-uri)))
+
+;; returns minting record for user — NOT current ownership (see I-02)
+;; returns none if user has never minted via street-controller
+(define-read-only (get-user-minted-tokens (user principal))
+  (ok (map-get? users user)))
+```
+</div>

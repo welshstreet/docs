@@ -1,0 +1,207 @@
+import { Callout } from 'nextra/components'
+
+# Street Token Audit
+
+## Description
+
+The street token is the native protocol token for the Welsh Street Exchange, implementing the SIP-010 fungible token standard. STREET tokens are distributed through three mechanisms: (1) an initial TGE mint of 2 billion tokens to the deployer at contract initialization, (2) `street-controller` minting (100k or 1M tokens per call with WELSH donation), and (3) `emission-controller` minting (10k tokens per block to reward pool). The contract uses mixed authorization: `mint` and admin functions use `contract-caller`, while `transfer` uses `tx-sender` to verify the original transaction initiator owns the tokens being transferred. This enables other contracts (like `street-market`) to facilitate transfers on behalf of users while maintaining proper authorization checks.
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | Mixed authorization: tx-sender for transfer, contract-caller for mint/admin | Informational | By Design |
+| I-03 | Initial TGE mint hardcoded at deployment | Informational | By Design |
+| I-04 | No burn function | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** Low — the contract owner controls only `set-contract-owner` and `set-token-uri`. No ability to mint, burn, or transfer tokens.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+Mixed authorization: tx-sender for transfer, contract-caller for mint/admin
+
+- **Severity:** Informational
+- **Location:** `transfer`, `mint`, `set-contract-owner`, `set-token-uri`
+- **Description:** The contract uses `tx-sender` authorization for `transfer` but `contract-caller` for `mint` and admin functions. When `street-market` calls `transfer(amount, user, market, none)`, the `tx-sender` check verifies the original user authorized the transaction, even though the immediate caller is the market contract.
+- **Impact:** None — this is the correct authorization pattern for SIP-010 tokens used in DeFi. `tx-sender` ensures token owners must sign transactions that move their tokens. `contract-caller` for mint/admin prevents unauthorized protocol interactions. This differs from `credit-token` which uses `contract-caller` for transfer because CREDIT tokens are only transferred through `credit-controller`.
+- **Status:** By design. Standard pattern for tokens that need both direct user transfers and protocol contract integration.
+
+### [I-03] 
+### [I-04] Initial TGE mint hardcoded at deployment
+
+- **Severity:** Informational
+- **Location:** Contract initialization block
+- **Description:** The contract mints 2 billion STREET tokens (`u2000000000000000` at 6 decimals) to `contract-owner` (deployer) during contract initialization. This is a one-time mint executed automatically at deployment — no function call required.
+- **Impact:** The entire TGE supply is minted at launch. Total supply starts at 2 billion + subsequent emissions. The deployer receives all initial tokens and must distribute them manually or via other contracts.
+- **Status:** By design. Standard token deployment pattern for initial distribution.
+
+### [I-03] No burn function
+
+- **Severity:** Informational
+- **Location:** N/A
+- **Description:** The contract does not expose a `burn` function. Once minted, STREET tokens cannot be destroyed. Total supply uses `tx-sender` to verify token owner authorization
+- **Impact:** None under intended design — perpetual supply growth is the tokenomics model. Tokens can be sent to an unspendable address if burning is desired off-chain.
+- **Status:** By design. Immutable supply curve consistent with protocol tokenomics.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `mint` gated to `.emission-controller` and `.street-controller` via `contract-caller`. `transfer` requires `contract-caller` equals sender parameter. Admin functions require `contract-caller` equals `contract-owner`. |
+| 2 | Input Validation | Pass — zero-amount check on `transfer`. `mint` has no explicit zero-amount check but minting zero is harmless. |
+| 3 | Arithmetic | N/A — no arithmetic operations. |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. Each function is a single atomic block. |
+| 5 | Asset Safety | Pass — owner cannot mint, burn, or transfer tokens. Only protocol contracts can mint. No burn function exists. `transfer` enforces token ownership via `tx-sender` (see I-02). |
+| 6 | Trait Usage | Pass — implements SIP-010 trait. No trait parameters accepted. |
+| 7 | Authorization Chains | Pass — `mint` and admin functions use `contract-caller`. `transfer` uses `tx-sender` to verify original transaction initiator (see I-02). Example: when `street-market` calls `transfer(amount, user, market, none)`, `tx-sender` = user and `sender` parameter = user, so the check `(is-eq tx-sender sender)` correctly verifies user authorization. This differs from `credit-token` which uses `contract-caller` for delegated transfers through `credit-controller`. |
+| 8 | State Consistency | Pass — `ft-mint?` and `ft-transfer?` are atomic. Failures revert via `try!`. TGE mint is atomic with deployment. |
+| 9 | Denial of Service | Pass — no blocking conditions. Transfers are unrestricted for token holders. Minting requires authorized protocol contracts. |
+| 10 | Upgrade / Migration | Informational — single-step ownership transfer (see I-01). Mixed authorization model (see I-02). Token URI updatable by owner. No burn function (see I-04). TGE hardcoded (see I-03). |
+
+## Recommendations
+
+No code changes recommended. All four informational findings are intentional design choices consistent with the protocol's tokenomics and authorization model.
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Token
+
+;; SIP-010 trait implementation — standard fungible token interface
+(impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; native protocol token — STREET
+(define-fungible-token street)
+
+;; errors
+;; 4 unique error codes with u98x prefix — all tested, no overlap with other contracts
+(define-constant ERR_ZERO_AMOUNT (err u981))
+(define-constant ERR_NOT_CONTRACT_OWNER (err u982))
+(define-constant ERR_NOT_TOKEN_OWNER (err u983))
+(define-constant ERR_NOT_AUTHORIZED (err u984))
+
+;; constants
+;; immutable — cannot be changed after deployment
+(define-constant TOKEN_DECIMALS u6)
+(define-constant TOKEN_NAME "Welsh Street Token")
+(define-constant TOKEN_SYMBOL "STREET")
+
+;; variables
+
+;; initialized to deployer at deployment — transferable via set-contract-owner
+(define-data-var contract-owner principal tx-sender)
+
+;; IPFS-hosted metadata — updatable by contract-owner only
+(define-data-var token-uri (optional (string-utf8 256)) (some u"https://ipfs.io/ipfs/bafybeiexeg4tyoslafsnfpnob2kihdtl2lnhz4fupldtbtpp3y534ebkty/street.json"))
+
+;; mints STREET to recipient — called by emission-controller (10k/block) and street-controller (100k or 1M/mint)
+;; uses contract-caller auth — only authorized protocol contracts can mint
+(define-public (mint (amount uint) (recipient principal)) (see I-02)
+(define-public (mint (amount uint) (recipient principal))
+    (begin
+      ;; whitelist: only emission-controller or street-controller can call
+      ;; uses contract-caller (not tx-sender)
+        (or
+          (is-eq contract-caller .emission-controller)
+          (is-eq contract-caller .street-controller)
+        )
+        ERR_NOT_AUTHORIZED
+      )
+      ;; no explicit zero-amount check — minting zero is harmless and wastes caller's fee
+      (try! (ft-mint? street amount recipient))
+      (ok true)
+    )
+)
+
+;; single-step ownership transfer using contract-caller — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — consistent with all protocol contracts
+    ;; allows contracts to be(not tx-sender) — consistent with all protocol contracts (see I-02)ER)
+
+    ;; irreversible if transferred to wrong address — owner controls only metadata, not funds
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; updates IPFS token metadata URI — cosmetic only, no economic impact
+(define-public (set-token-uri (value (string-utf8 256)))
+  (begin
+    ;; contract-caller check — same pattern as set-contract-owner
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set token-uri (some (not tx-sender) — same pattern as set-contract-owner (see I-02)
+    (ok true)
+  )
+)
+
+;; direct transfer — standard SIP-010 pattern with contract-caller authorization
+(define-public (transfer
+    (amount uint)tx-sender authorization (see I-02)
+(define-public (transfer
+    (amount uint)
+    (sender principal)
+    (recipient principal)
+    (memo (optional (buff 34)))
+  )
+  (begin
+    ;; prevents zero-amount transfers
+    (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+
+    ;; tx-sender must equal sender parameter — verifies token owner authorization (see I-02)
+    ;; CRITICAL: uses tx-sender (not contract-caller) to enable protocol contracts like
+    ;; street-market to facilitate transfers on behalf of users
+    ;; Example: street-market calls transfer(amount, user, market, none)
+    ;;   - tx-sender = user (original transaction initiator)
+    ;;   - contract-caller = .street-market
+    ;;   - sender parameter = user
+    ;; Check: (is-eq tx-sender sender) = (is-eq user user) = TRUE ✓
+    (asserts! (is-eq tx-sendr has sufficient balance — atomic revert on failure
+    (try! (ft-transfer? street amount sender recipient))
+
+    ;; memo printed for indexer visibility — no state impact
+    (match memo content (print content) 0x)
+    (ok true)
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — standard SIP-010 interface, no access control needed ===
+
+;; returns current contract owner — public information
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+(define-read-only (get-balance (who principal))
+  (ok (ft-get-balance street who)))
+
+(define-read-only (get-decimals)
+  (ok TOKEN_DECIMALS))
+
+(define-read-only (get-name)
+  (ok TOKEN_NAME))
+
+(define-read-only (get-symbol)
+  (ok TOKEN_SYMBOL))
+
+;; returns mutable token URI — updatable by owner via set-token-uri
+(define-read-only (get-token-uri)3
+  (ok (var-get token-uri)))
+
+;; total minted (TGE + emissions) — no burn function, supply monotonically increases (see I-04)
+(define-read-only (get-total-supply)
+  (ok (ft-get-supply street)))
+
+;; The Great Welsh $STREET TGE
+
+;; initialization block — executes once at contract deployment (see I-03)
+;; mints 2 billion STREET tokens to the deployer (contract-owner at deploy time)
+(begin
+  (try! (ft-mint? street u2000000000000000 (var-get contract-owner)))
+)
+```
+</div>

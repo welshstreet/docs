@@ -1,0 +1,545 @@
+import { Callout } from 'nextra/components'
+
+# Street Market Audit
+
+## Description
+
+The street market is the AMM/DEX contract for the Welsh Street Exchange, implementing a constant-product market maker for the WELSH/STREET trading pair. It manages pool reserves, swap execution with 1% fee collection, proportional liquidity provision and removal with 1% withdrawal tax, and a locked liquidity mechanism for permanent pool depth. Token A is WELSH (`welshcorgicoin`) and Token B is STREET (`street-token`).
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | No on-chain slippage protection | Informational | By Design |
+| I-03 | Integer truncation in AMM calculations favors protocol | Informational | By Design |
+| I-04 | Locked liquidity is permanent and irrecoverable | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** Low — the contract owner can only call `initial-liquidity` and `set-contract-owner`. The owner cannot swap, withdraw reserves, modify fees, or manipulate pool state.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+
+### [I-02] No on-chain slippage protection
+
+- **Severity:** Informational
+- **Location:** `swap-a-b`, `swap-b-a`
+- **Description:** Neither swap function accepts a minimum output parameter. The output amount is determined entirely by the AMM formula at execution time. If pool state changes between transaction submission and execution (e.g., another swap in the same block), the caller receives whatever the formula produces.
+- **Impact:** None under intended design — slippage protection is handled by frontend post-conditions, which revert the transaction if the output falls below a user-specified minimum. This is consistent with the protocol's design clarifications.
+- **Status:** Accepted. Explicit design choice to keep swap functions simple and delegate slippage enforcement to post-conditions.
+
+### [I-03] Integer truncation in AMM calculations favors protocol
+
+- **Severity:** Informational
+- **Location:** `provide-liquidity`, `swap-a-b`, `swap-b-a`, `remove-liquidity`
+- **Description:** All division operations truncate (round down) per Clarity's integer arithmetic. In `provide-liquidity`, `amount-b` and LP minting favor the protocol — users may receive slightly fewer LP tokens than their exact proportional share. In swaps, output amounts truncate — users receive slightly less. In `remove-liquidity`, proportional share calculations truncate — users receive fractionally less.
+- **Impact:** Negligible. Truncation losses are sub-micro-token amounts (less than 1 unit at 6 decimals). Rounding toward the protocol is the universal AMM convention and prevents extraction via repeated small operations. Clarity runtime prevents overflow.
+- **Status:** Accepted. Standard integer arithmetic behavior for on-chain AMMs.
+
+### [I-04] Locked liquidity is permanent and irrecoverable
+
+- **Severity:** Informational
+- **Location:** `lock-liquidity`, `remove-liquidity` (tax mechanic)
+- **Description:** Tokens enter the locked pool via two paths: (1) `lock-liquidity` is permissionless — anyone can lock WELSH and STREET with no LP issued in return, and (2) `remove-liquidity` tax — 1% of withdrawn amounts added to locked reserves. Once locked, tokens cannot be withdrawn by anyone, including the contract owner. Locked tokens permanently increase pool depth (better swap pricing) but reduce the effective claim of LP holders on underlying assets.
+- **Impact:** None under intended design — locked liquidity creates a permanent price floor and reduces pool drain risk. The owner has no ability to unlock or extract locked tokens.
+- **Status:** Accepted. Intentional mechanism for permanent pool depth.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `initial-liquidity` owner-only via `contract-caller` check. `set-contract-owner` owner-only. All other public functions are permissionless by design. Owner cannot swap, withdraw, or manipulate reserves. |
+| 2 | Input Validation | Pass — zero-amount checks on all public functions. `ERR_INVALID_AMOUNT` catches zero-output swaps (dust inputs). `ERR_NOT_INITIALIZED` prevents operations on empty pool. `ERR_INITIALIZED` prevents re-initialization when pool is active. |
+| 3 | Arithmetic | Pass — constant-product formula uses integer division (truncation toward zero). No division-by-zero: reserve checks precede all divisions. Locked ratio adjustments guarded by `(> res u0)`. Clarity runtime prevents overflow. Integer truncation favors protocol (see I-03). |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. All state updates (`var-set`) follow `try!`-wrapped cross-contract calls. Any failure reverts all state. Operation ordering is intentional: `remove-liquidity` calls `decrease-rewards` before LP burn (uses current balance for redistribution), `provide-liquidity` mints LP before `increase-rewards` (captures updated balance for preservation). |
+| 5 | Asset Safety | Pass — owner cannot mint LP, transfer reserves, or bypass pool mechanics. `transformer` is private — trait parameter cannot be externally supplied. All token transfers use `try!` — failure reverts entire transaction. Fee routing sends swap fees to `street-rewards`, not to owner. |
+| 6 | Trait Usage | Pass — `transformer` accepts `<sip-010>` trait but is private. Only called internally with `.welshcorgicoin` and `.street-token`. External callers cannot inject malicious trait implementations. |
+| 7 | Authorization Chains | Pass — uses `contract-caller` for owner checks. Token transfers pass `contract-caller` as sender. `welshcorgicoin.transfer` checks `is-eq from tx-sender` — works correctly for direct calls where `contract-caller` = `tx-sender`. `transformer` uses `as-contract` to send tokens from the market's own balance. |
+| 8 | State Consistency | Pass — reserves and locked amounts updated atomically within each function. `initial-liquidity` reinitialize path correctly sets `reserve = locked + amount` to account for existing locked tokens. `remove-liquidity` uses defensive `(if (>= ...) (- ...) u0)` to prevent underflow. |
+| 9 | Denial of Service | Pass — no blocking conditions. Pool can be reinitialized after full LP withdrawal (when `total-lp = 0`). No function can permanently brick the contract. |
+| 10 | Upgrade / Migration | Informational — all protocol parameters (`FEE`, `TAX`, `BASIS`) are immutable constants. Locked liquidity is irrecoverable (see I-04). Single-step ownership transfer (see I-01). |
+
+## Recommendations
+
+No code changes recommended. All four informational findings are intentional design choices consistent with the protocol's architecture.
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Market
+
+;; SIP-010 trait import — used by the private transformer function
+(use-trait sip-010 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; errors
+;; 5 unique error codes with u95x prefix — all tested, no overlap with other contracts
+(define-constant ERR_ZERO_AMOUNT (err u951))
+(define-constant ERR_NOT_CONTRACT_OWNER (err u952))
+(define-constant ERR_NOT_INITIALIZED (err u953))
+(define-constant ERR_INITIALIZED (err u954))
+(define-constant ERR_INVALID_AMOUNT (err u955))
+
+;; constants
+
+;; basis points denominator for fee and tax calculations (100/10000 = 1%)
+(define-constant BASIS u10000)
+
+;; swap fee: 1% of input amount — collected per swap, routed to street-rewards
+(define-constant FEE u100)
+
+;; removal tax: 1% of withdrawn amounts — taxed portion becomes permanently locked liquidity
+(define-constant TAX u100)
+
+;; variables
+
+;; initialized to deployer — owner only controls initial-liquidity and set-contract-owner
+(define-data-var contract-owner principal tx-sender)
+
+;; locked liquidity: permanent reserves that cannot be withdrawn by anyone
+;; increases via lock-liquidity (permissionless) and remove-liquidity tax
+;; proportionally adjusted during swaps to maintain locked/reserve ratio
+(define-data-var locked-a uint u0)
+(define-data-var locked-b uint u0)
+
+;; total reserves: sum of available and locked liquidity
+;; available = reserve - locked (the portion LPs can withdraw)
+(define-data-var reserve-a uint u0)
+(define-data-var reserve-b uint u0)
+
+;; burns LP tokens without withdrawing underlying assets — voluntary donation mechanism
+;; reduces total LP supply, increasing effective share of remaining LPs
+;; unclaimed rewards redistributed to remaining holders via decrease-rewards
+(define-public (burn-liquidity (amount uint))
+  (begin
+    (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+
+    ;; transfer LP from caller to street-market — credit-token whitelists street-market
+    (try! (contract-call? .credit-token transfer amount contract-caller .street-market none))
+
+    ;; update reward accounting — redistributes caller's unclaimed rewards to remaining LPs
+    (try! (contract-call? .street-rewards decrease-rewards contract-caller amount))
+
+    ;; burn LP tokens held by street-market — as-contract delegates identity
+    (try! (as-contract? ((with-ft .credit-token "credit" amount))
+      (try! (contract-call? .credit-token burn amount))))
+
+    ;; no assets returned to caller — reserves remain unchanged
+    (ok {
+      amount-lp: amount,
+    })
+  )
+)
+
+;; locks tokens permanently into the pool — increases pool depth for better swap pricing
+;; permissionless: anyone can lock tokens (caller receives nothing in return)
+;; locked amounts proportionally adjust during swaps to maintain ratio
+(define-public (lock-liquidity (amount-a uint))
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a  (var-get reserve-a))
+    (res-b  (var-get reserve-b))
+  )
+    (begin
+      (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
+
+      ;; pool must be initialized — reserves must exist to calculate proportional amount-b
+      (asserts! (and (> res-a u0) (> res-b u0)) ERR_NOT_INITIALIZED)
+
+      ;; calculate proportional STREET amount based on current total reserve ratio
+      ;; integer truncation may result in slightly less amount-b than exact proportion
+      (let ((amount-b (/ (* amount-a res-b) res-a)))
+        (begin
+          ;; amount-b must be > 0 — prevents dust amounts that would lock WELSH without STREET
+          (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
+
+          ;; transfer both tokens from caller to street-market
+          ;; welshcorgicoin uses tx-sender auth — contract-caller = tx-sender for direct calls
+          (try! (contract-call? .welshcorgicoin transfer amount-a contract-caller .street-market none))
+          (try! (contract-call? .street-token transfer amount-b contract-caller .street-market none))
+
+          ;; increase both locked AND reserve by equal amounts
+          ;; net effect on available (reserve - locked): unchanged
+          ;; but total reserves increase — swaps use total reserves for pricing
+          (var-set locked-a (+ lock-a amount-a))
+          (var-set locked-b (+ lock-b amount-b))
+          (var-set reserve-a (+ res-a amount-a))
+          (var-set reserve-b (+ res-b amount-b))
+          (ok { 
+            amount-a: amount-a, 
+            amount-b: amount-b 
+          })
+        )
+      )
+    )
+  )
+)
+
+;; owner-only: initializes or reinitializes the liquidity pool
+;; uses geometric mean sqrti(a * b) for initial LP minting — standard AMM initialization
+;; can be called when reserves are zero OR when total LP supply is zero (reinitialize after full burn)
+(define-public (initial-liquidity (amount-a uint) (amount-b uint))
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+
+    ;; geometric mean — standard initial LP calculation, no manipulation possible
+    (amount-lp (sqrti (* amount-a amount-b)))
+  )
+  (begin
+    (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
+    (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
+
+    ;; owner-only — only contract owner can set initial price ratio
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+
+    ;; pool must be uninitialized OR have zero LP supply (reinitialize path)
+    ;; reinitialize handles case where all LP was burned but locked tokens remain
+    (asserts! (or
+      (and (is-eq res-a u0) (is-eq res-b u0))
+      (is-eq total-lp u0))
+      ERR_INITIALIZED)
+
+    ;; transfer both tokens from caller to street-market
+    (try! (contract-call? .welshcorgicoin transfer amount-a contract-caller .street-market none))
+    (try! (contract-call? .street-token transfer amount-b contract-caller .street-market none))
+
+    ;; mint LP tokens to caller — credit-token whitelists only street-market for minting
+    (try! (contract-call? .credit-token mint amount-lp))
+
+    ;; register LP in reward system — increase-rewards snapshots caller's new balance
+    (try! (contract-call? .street-rewards increase-rewards contract-caller amount-lp))
+
+    ;; reserves set to locked + provided — accounts for existing locked tokens on reinitialize
+    ;; on first call: lock-a = 0, so reserve-a = amount-a
+    ;; on reinitialize: lock-a > 0, so reserve-a = lock-a + amount-a (avail = amount-a)
+    (var-set reserve-a (+ lock-a amount-a))
+    (var-set reserve-b (+ lock-b amount-b))
+    (ok {
+      amount-a: amount-a,
+      amount-b: amount-b,
+      amount-lp: amount-lp
+      })
+    )
+  )
+)
+
+;; adds liquidity proportionally — caller provides WELSH, STREET amount calculated from ratio
+;; LP tokens minted using min(lp-from-a, lp-from-b) — standard fair-share calculation
+;; uses available liquidity (reserve - locked) for ratio, not total reserves
+(define-public (provide-liquidity (amount-a uint))
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a  (var-get reserve-a))
+    (res-b  (var-get reserve-b))
+
+    ;; available = reserve - locked — the withdrawable portion
+    ;; safe subtraction with underflow protection
+    (avail-a (if (>= res-a lock-a) (- res-a lock-a) u0))
+    (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+  )
+    (begin
+      (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
+
+      ;; pool must be initialized with LP
+      (asserts! (> total-lp u0) ERR_NOT_INITIALIZED)
+
+      ;; both sides must have available liquidity for ratio calculation
+      (asserts! (and (> avail-a u0) (> avail-b u0)) ERR_NOT_INITIALIZED)
+
+      (let (
+        ;; proportional STREET amount based on available ratio (not total reserves)
+        ;; integer truncation: user may provide slightly less STREET than exact proportion (see I-03)
+        (amount-b (/ (* amount-a avail-b) avail-a))
+
+        ;; LP tokens calculated from both sides — take minimum for fairness
+        ;; prevents user from inflating LP claim by supplying imbalanced ratios
+        (lp-from-a (/ (* amount-a total-lp) avail-a))
+        (lp-from-b (/ (* amount-b total-lp) avail-b))
+        (amount-lp (if (< lp-from-a lp-from-b) lp-from-a lp-from-b))
+      )
+        (begin
+          ;; transfer tokens from caller to street-market
+          (try! (contract-call? .welshcorgicoin transfer amount-a contract-caller .street-market none))
+          (try! (contract-call? .street-token transfer amount-b contract-caller .street-market none))
+
+          ;; mint LP to caller, then register in rewards
+          ;; order matters: mint first so increase-rewards reads the updated LP balance
+          (try! (contract-call? .credit-token mint amount-lp))
+          (try! (contract-call? .street-rewards increase-rewards contract-caller amount-lp))
+
+          ;; update total reserves (not available — locked unchanged)
+          (var-set reserve-a (+ res-a amount-a))
+          (var-set reserve-b (+ res-b amount-b))
+          (ok { 
+            amount-a: amount-a, 
+            amount-b: amount-b, 
+            amount-lp: amount-lp 
+            })
+        )
+      )
+    )
+  )
+)
+
+;; removes liquidity — returns proportional WELSH and STREET minus 1% tax
+;; tax added to locked reserves (permanent liquidity floor — see I-04)
+;; reward accounting updated BEFORE LP burn — uses current balance for redistribution
+(define-public (remove-liquidity (amount-lp uint))
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+    (avail-a (if (>= res-a lock-a) (- res-a lock-a) u0))
+    (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+  )
+    (begin
+      (asserts! (> amount-lp u0) ERR_ZERO_AMOUNT)
+      (asserts! (> total-lp u0) ERR_NOT_INITIALIZED)
+
+      (let (
+        ;; proportional share of available liquidity (truncation favors protocol — see I-03)
+        (remove-a (/ (* amount-lp avail-a) total-lp))
+        (remove-b (/ (* amount-lp avail-b) total-lp))
+
+        ;; 1% tax on withdrawn amounts — becomes permanent locked liquidity
+        (tax-a (/ (* remove-a TAX) BASIS))
+        (tax-b (/ (* remove-b TAX) BASIS))
+
+        ;; user receives withdrawn minus tax
+        (amount-a (- remove-a tax-a))
+        (amount-b (- remove-b tax-b))
+      )
+        (begin
+          ;; transfer LP from caller to street-market (before burn)
+          (try! (contract-call? .credit-token transfer amount-lp contract-caller .street-market none))
+
+          ;; transfer underlying tokens from street-market to caller (via transformer)
+          (try! (transformer .welshcorgicoin amount-a contract-caller))
+          (try! (transformer .street-token amount-b contract-caller))
+
+          ;; decrease rewards BEFORE burn — uses current LP balance for redistribution
+          ;; unclaimed rewards from this position redistributed to remaining LPs
+          ;; intentionally different from provide-liquidity ordering (mint before increase-rewards)
+          (try! (contract-call? .street-rewards decrease-rewards contract-caller amount-lp))
+
+          ;; burn the LP tokens
+          (try! (as-contract? ((with-ft .credit-token "credit" amount-lp))
+            (try! (contract-call? .credit-token burn amount-lp))))
+
+          ;; update reserves — decrease by user's received amounts (not full proportional share)
+          ;; tax remains in reserves AND is added to locked
+          ;; net effect: available decreases by full proportional share (remove-a)
+          ;; defensive underflow protection with (if (>= ...) (- ...) u0)
+          (var-set reserve-a (if (>= res-a amount-a) (- res-a amount-a) u0))
+          (var-set reserve-b (if (>= res-b amount-b) (- res-b amount-b) u0))
+
+          ;; tax added to locked — permanent liquidity floor increases
+          (var-set locked-a (+ lock-a tax-a))
+          (var-set locked-b (+ lock-b tax-b))
+          (ok {
+            amount-a: amount-a,
+            amount-b: amount-b,
+            amount-lp: amount-lp,
+            tax-a: tax-a,
+            tax-b: tax-b
+          })
+        )
+      )
+    )
+  )
+)
+
+;; swaps WELSH → STREET using constant-product formula
+;; 1% fee deducted from input before swap calculation
+;; fee routed to street-rewards, locked amounts proportionally adjusted
+(define-public (swap-a-b (amount-a uint))
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+
+    ;; fee: 1% of input — deducted before swap math
+    (fee-a (/ (* amount-a FEE) BASIS))
+    (amount-a-net (- amount-a fee-a))
+
+    ;; constant-product AMM: out = (in_net * reserve_out) / (reserve_in + in_net)
+    ;; no on-chain slippage parameter — protection via frontend post-conditions (see I-02)
+    (num (* amount-a-net res-b))
+    (den (+ res-a amount-a-net))
+    (amount-b (/ num den))
+
+    ;; new reserves after swap (fee excluded from reserve increase)
+    (res-a-new (+ res-a amount-a-net))
+    (res-b-new (- res-b amount-b))
+
+    ;; proportional lock adjustment — maintains locked/reserve ratio through swaps
+    ;; division by zero guarded by (> res u0) check
+    (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
+    (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
+  )
+    (begin
+      (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
+
+      ;; output must be > 0 — prevents dust swaps with zero output
+      (asserts! (> amount-b u0) ERR_INVALID_AMOUNT)
+      (asserts! (and (> res-a u0) (> res-b u0)) ERR_NOT_INITIALIZED)
+
+      ;; 1. user sends full amount (including fee) to street-market
+      (try! (contract-call? .welshcorgicoin transfer amount-a contract-caller .street-market none))
+
+      ;; 2. fee forwarded from street-market to street-rewards
+      (try! (transformer .welshcorgicoin fee-a .street-rewards))
+
+      ;; 3. output tokens sent from street-market to caller
+      (try! (transformer .street-token amount-b contract-caller))
+
+      ;; 4. update WELSH reward index — street-market whitelisted in update-rewards-a
+      (try! (contract-call? .street-rewards update-rewards-a fee-a))
+
+      ;; update pool state
+      (var-set reserve-a res-a-new)
+      (var-set reserve-b res-b-new)
+      (var-set locked-a lock-a-new)
+      (var-set locked-b lock-b-new)
+      (ok {
+        amount-a: amount-a,
+        amount-b: amount-b,
+        fee-a: fee-a,
+        res-a: res-a,
+        res-a-new: res-a-new,
+        res-b: res-b,
+        res-b-new: res-b-new
+      })
+    )
+  )
+)
+
+;; swaps STREET → WELSH — mirror of swap-a-b with reversed token roles
+(define-public (swap-b-a (amount-b uint))
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+
+    ;; fee: 1% of STREET input
+    (fee-b (/ (* amount-b FEE) BASIS))
+    (amount-b-net (- amount-b fee-b))
+
+    ;; AMM formula: WELSH output from STREET input
+    (num (* amount-b-net res-a))
+    (den (+ res-b amount-b-net))
+    (amount-a (/ num den))
+
+    ;; new reserves — WELSH decreases, STREET increases
+    (res-a-new (- res-a amount-a))
+    (res-b-new (+ res-b amount-b-net))
+
+    ;; proportional lock adjustment
+    (lock-a-new (if (> res-a u0) (/ (* lock-a res-a-new) res-a) lock-a))
+    (lock-b-new (if (> res-b u0) (/ (* lock-b res-b-new) res-b) lock-b))
+  )
+    (begin
+      (asserts! (> amount-b u0) ERR_ZERO_AMOUNT)
+      (asserts! (> amount-a u0) ERR_INVALID_AMOUNT)
+      (asserts! (and (> res-a u0) (> res-b u0)) ERR_NOT_INITIALIZED)
+
+      ;; 1. user sends STREET (including fee) to street-market
+      (try! (contract-call? .street-token transfer amount-b contract-caller .street-market none))
+
+      ;; 2. fee forwarded to street-rewards
+      (try! (transformer .street-token fee-b .street-rewards))
+
+      ;; 3. WELSH output sent to caller
+      (try! (transformer .welshcorgicoin amount-a contract-caller))
+
+      ;; 4. update STREET reward index — street-market whitelisted in update-rewards-b
+      (try! (contract-call? .street-rewards update-rewards-b fee-b))
+
+      (var-set reserve-a res-a-new)
+      (var-set reserve-b res-b-new)
+      (var-set locked-a lock-a-new)
+      (var-set locked-b lock-b-new)
+      (ok {
+        amount-a: amount-a,
+        amount-b: amount-b,
+        fee-b: fee-b,
+        res-a: res-a,
+        res-a-new: res-a-new,
+        res-b: res-b,
+        res-b-new: res-b-new
+      })
+    )
+  )
+)
+
+;; single-step ownership transfer — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — only direct caller, not tx-sender chain
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; private helper: transfers SIP-010 tokens from street-market to recipient
+;; uses as-contract to act as the contract principal for outbound token transfers
+;; trait parameter is safe — only called internally with known tokens (.welshcorgicoin, .street-token)
+(define-private (transformer
+    (token <sip-010>)
+    (amount uint)
+    (recipient principal)
+  )
+  (as-contract? ((with-ft (contract-of token) "*" amount))
+    (try! (contract-call? token transfer amount tx-sender recipient none))
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — no access control needed ===
+
+;; returns current Bitcoin and Stacks block heights
+(define-read-only (get-blocks)
+  (ok {
+    bitcoin-block: burn-block-height,
+    stacks-block: stacks-block-height
+  }))
+
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+;; complete pool state — exposes reserves, locked amounts, available liquidity, and protocol parameters
+(define-read-only (get-market-info)
+  (let (
+    (lock-a (var-get locked-a))
+    (lock-b (var-get locked-b))
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+  )
+    (ok {
+      avail-a: (if (>= res-a lock-a) (- res-a lock-a) u0),
+      avail-b: (if (>= res-b lock-b) (- res-b lock-b) u0),
+      fee: FEE,
+      locked-a: lock-a,
+      locked-b: lock-b,
+      reserve-a: res-a,
+      reserve-b: res-b,
+      tax: TAX
+    })
+  )
+)
+```
+</div>

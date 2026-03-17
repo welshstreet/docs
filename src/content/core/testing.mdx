@@ -33,7 +33,7 @@ The testing achieves comprehensive coverage through three key principles. Every 
 | Contract | Functions | Errors | Test Files | Functions | Errors |
 |----------|-----------|--------|------------|------------------|---------------|
 | credit-controller | 3 | 4 | 8 | 3/3 (100%) | 4/4 (100%) |
-| credit-token | 11 | 3 | 5 | 11/11 (100%) | 3/3 (100%) |
+| credit-token | 12 | 3 | 5 | 12/12 (100%) | 3/3 (100%) |
 | emission-controller | 5 | 4 | 4 | 5/5 (100%) | 4/4 (100%) |
 | street-controller | 4 | 5 | 5 | 4/4 (100%) | 5/5 (100%) |
 | street-market | 11 | 5 | 20 | 11/11 (100%) | 5/5 (100%) |
@@ -41,7 +41,7 @@ The testing achieves comprehensive coverage through three key principles. Every 
 | street-rewards | 14 | 4 | 12 | 14/14 (100%) | 4/4 (100%) |
 | street-token | 11 | 4 | 7 | 11/11 (100%) | 4/4 (100%) |
 | welsh-faucet | 10 | 2 | 5 | 10/10 (100%) | 2/2 (100%) |
-| **Total** | **78** | **35** | **85** | **78/78 (100%)** | **35/35 (100%)** |
+| **Total** | **79** | **35** | **85** | **79/79 (100%)** | **35/35 (100%)** |
 
 ### credit-controller
 
@@ -68,12 +68,12 @@ The testing achieves comprehensive coverage through three key principles. Every 
 
 ### credit-token
 
-**Functions (11 total):**
+**Functions (12 total):**
 - `burn` (pass + errors)
 - `mint` (pass + errors)
 - `set-contract-owner` (pass + error)
 - `set-token-uri` (pass + error)
-- `transfer` via credit-controller
+- `transfer` (authorization guards tested via credit-controller and street-market tests)
 - `get-balance` (shared read-only tests)
 - `get-contract-owner` (shared tests)
 - `get-decimals` (shared tests)
@@ -105,9 +105,9 @@ The testing achieves comprehensive coverage through three key principles. Every 
 
 **Errors (4/4):**
 - ERR_EMISSION_INTERVAL (u931)
-- ERR_NOT_ELIGIBLE (u932)
-- ERR_NO_LIQUIDITY (u933)
-- ERR_NOT_CONTRACT_OWNER (u934)
+- ERR_NOT_CONTRACT_OWNER (u932)
+- ERR_NOT_ELIGIBLE (u933)
+- ERR_NO_LIQUIDITY (u934)
 
 **Test Files (4):**
 - emission-controller-pass
@@ -219,7 +219,7 @@ The testing achieves comprehensive coverage through three key principles. Every 
 - ERR_ZERO_AMOUNT (u971)
 - ERR_NOT_CONTRACT_OWNER (u972)
 - ERR_NOT_AUTHORIZED (u973)
-- ERR_CLEANUP_INTERVAL (u975)
+- ERR_CLEANUP_INTERVAL (u974)
 
 **Test Files (15):**
 - claim-rewards-wallet1-pass
@@ -304,8 +304,8 @@ The `welshcorgicoin` contract was utilized extensively during teh development an
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| Total Functions | 78 | - |
-| Functions Tested | 78 | 100% |
+| Total Functions | 79 | - |
+| Functions Tested | 79 | 100% |
 | Total Error Conditions | 35 | - |
 | Error Conditions Tested | 35 | 100% |
 | Test Files | 85 | - |

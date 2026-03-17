@@ -1,0 +1,183 @@
+import { Callout } from 'nextra/components'
+
+# Street Controller Audit
+
+## Description
+
+The street controller is a permissionless minting contract that distributes STREET tokens and NFTs in exchange for WELSH donations. Each user can mint up to 2 times. On each mint, the caller donates 1,000 WELSH to the reward pool and receives STREET tokens (100,000 standard, or 1,000,000 on every 21st mint). An NFT is also minted to the caller.
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | Non-standard error code for ERR_YOU_POOR | Informational | By Design |
+| I-03 | Predictable milestone bonus at every 21st mint | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** None — the contract owner has no economic privileges. Ownership only controls the `set-contract-owner` function itself. The owner cannot modify mint amounts, caps, or bypass any checks.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+
+### [I-02] Non-standard error code for ERR_YOU_POOR
+
+- **Severity:** Informational
+- **Location:** `ERR_YOU_POOR`
+- **Description:** `ERR_YOU_POOR` uses error code `u2`, breaking the `u94x` prefix convention used by all other street-controller errors. This is a community/meme reference carried over from the welshcorgicoin ecosystem.
+- **Impact:** None — error codes are cosmetic identifiers. No overlap with other contract error codes in the protocol.
+- **Status:** Accepted. Intentional naming convention.
+
+### [I-03] Predictable milestone bonus at every 21st mint
+
+- **Severity:** Informational
+- **Location:** `mint` — `is-milestone` logic
+- **Description:** Every 21st mint (count 21, 42, 63, ...) receives 10x the standard STREET reward (1,000,000 vs 100,000). Since `mint-count` is publicly readable via `get-mint-count`, callers can time their mint to land on a milestone.
+- **Impact:** None under intended design — the milestone bonus incentivizes participation. Predictability is a feature, not a bug. No economic advantage beyond receiving the bonus amount, which is a known fixed quantity.
+- **Status:** Accepted. By design.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `set-contract-owner` gated by `contract-caller`. `mint` is permissionless but gated by WELSH balance, per-user limit, and global cap. |
+| 2 | Input Validation | Pass — `mint` takes no user inputs. All values derived from chain state and constants. |
+| 3 | Arithmetic | Pass — `count` increments from 0 with a hard cap at 21,000. Overflow impossible. `mod count u21` is safe for all values. `default-to u0` handles first-time callers. |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. Four `try!`-wrapped cross-contract calls. Any failure reverts all state including map and variable updates. |
+| 5 | Asset Safety | Pass — owner cannot mint tokens, NFTs, or transfer WELSH. WELSH donation is transferred from the caller (not from contract). Mint amounts are hardcoded constants. |
+| 6 | Trait Usage | N/A — no trait parameters. |
+| 7 | Authorization Chains | Pass — uses `contract-caller` consistently. The WELSH donation transfers via welshcorgicoin which checks `is-eq from tx-sender`. Both `contract-caller` (in street-controller) and `tx-sender` (in welshcorgicoin) resolve to the original user, ensuring only the caller's own WELSH can be donated. |
+| 8 | State Consistency | Pass — `map-set users` and `var-set mint-count` execute only after all four cross-contract calls succeed. Atomic rollback on any failure. |
+| 9 | Denial of Service | Pass — no blocking conditions. Global mint cap (21,000) intentionally limits total mints — contract becomes inert after cap is reached. Per-user limit (2) is immutable by design with no reset mechanism. |
+| 10 | Upgrade / Migration | Informational — all constants immutable. Mint cap, amounts, and per-user limit cannot be changed. Contract has a finite lifespan — becomes permanently inert after 21,000 mints. Single-step ownership transfer (see I-01). |
+
+## Recommendations
+
+No code changes recommended. All three informational findings are intentional design choices.
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Controller
+
+;; errors
+;; 4 unique error codes with u94x prefix + 1 non-standard (u2) — all tested
+(define-constant ERR_ALREADY_MINTED (err u941))
+(define-constant ERR_NOT_CONTRACT_OWNER (err u942))
+(define-constant ERR_MINT_CAP (err u943))
+(define-constant ERR_NO_LIQUIDITY (err u944))
+
+;; non-standard error code — breaks u94x convention (see I-02)
+(define-constant ERR_YOU_POOR (err u2))
+
+;; constants
+
+;; 1,000,000 STREET bonus on milestone mints (every 21st) — 10x standard reward
+(define-constant MINT_BONUS u1000000000000)
+
+;; 100,000 STREET standard reward per mint (6 decimals)
+(define-constant MINT_STREET u100000000000)
+
+;; 1,000 WELSH donation required per mint (6 decimals) — transferred to street-rewards
+(define-constant DONATE_WELSH u1000000000)
+
+;; global cap — maximum 21,000 total mints across all users
+(define-constant MINT_CAP u21000)
+
+;; variables
+
+;; monotonically increasing — counts total successful mints (0 to MINT_CAP)
+(define-data-var mint-count uint u0)
+
+;; initialized to deployer at deployment — owner has no economic privileges
+(define-data-var contract-owner principal tx-sender)
+
+;; tracks per-user mint count — each principal can mint up to 2 times
+(define-map users principal uint)
+
+;; permissionless mint — donates WELSH and receives STREET + NFT
+(define-public (mint)
+  (let (
+      ;; caller's WELSH balance — used for donation threshold check
+      ;; unwrap-panic safe — get-balance always returns (ok uint)
+      (user-welsh (unwrap-panic (contract-call? .welshcorgicoin get-balance contract-caller)))
+
+      ;; total LP supply — must be > 0 (pool must be initialized)
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+
+      ;; pre-increment count — used for cap check and milestone detection
+      (count (+ (var-get mint-count) u1))
+
+      ;; milestone check — every 21st mint (21, 42, 63, ...) gets bonus (see I-03)
+      (is-milestone (is-eq (mod count u21) u0))
+
+      ;; 10x reward on milestone, standard otherwise — hardcoded, immutable
+      (mint-amount (if is-milestone MINT_BONUS MINT_STREET))
+    )
+    (begin
+      ;; requires active liquidity pool — prevents minting before exchange is operational
+      (asserts! (> total-lp u0) ERR_NO_LIQUIDITY)
+
+      ;; caller must hold at least 1,000 WELSH to participate
+      (asserts! (>= user-welsh DONATE_WELSH) ERR_YOU_POOR)
+
+      ;; per-user limit: 2 mints maximum — immutable, no reset mechanism, no owner override
+      (asserts! (< (default-to u0 (map-get? users contract-caller)) u2) ERR_ALREADY_MINTED)
+
+      ;; global cap check — prevents more than 21,000 total mints
+      (asserts! (<= count MINT_CAP) ERR_MINT_CAP)
+
+      ;; mint STREET tokens to caller — street-controller is whitelisted in street-token.mint
+      (try! (contract-call? .street-token mint mint-amount contract-caller))
+
+      ;; mint NFT #count to caller — street-controller is whitelisted in street-nft.mint
+      (try! (contract-call? .street-nft mint count contract-caller))
+
+      ;; donate WELSH from caller to street-rewards pool
+      ;; uses contract-caller as from — welshcorgicoin checks is-eq from tx-sender
+      ;; both resolve to the original user, ensuring only caller's own WELSH is donated
+      (try! (contract-call? .welshcorgicoin transfer DONATE_WELSH contract-caller .street-rewards none))
+
+      ;; update WELSH reward index — street-controller is whitelisted in street-rewards.update-rewards-a
+      ;; if this fails, all prior mints and transfers revert atomically
+      (try! (contract-call? .street-rewards update-rewards-a DONATE_WELSH))
+
+      ;; state updates only after all cross-contract calls succeed
+      ;; increment user's mint count (0 → 1, or 1 → 2)
+      (map-set users contract-caller (+ (default-to u0 (map-get? users contract-caller)) u1))
+
+      ;; update global mint count
+      (var-set mint-count count)
+      (ok {
+        amount-a: DONATE_WELSH,
+        amount-b: mint-amount, 
+        block: burn-block-height,
+        count: count,
+      })
+    )
+  )
+)
+
+;; single-step ownership transfer — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — only direct caller, not tx-sender chain
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — no access control needed ===
+
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+;; returns total mints executed — publicly readable, used to predict milestone mints
+(define-read-only (get-mint-count)
+  (ok (var-get mint-count)))
+```
+</div>

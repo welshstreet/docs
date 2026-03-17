@@ -1,0 +1,165 @@
+import { Callout } from 'nextra/components'
+
+# Emission Controller Audit
+
+## Description
+
+The emission controller governs STREET token inflation. Any LP holder with at least 0.1% of total CREDIT supply can trigger a fixed-amount STREET mint once per block. Minted tokens are sent directly to `street-rewards` and the reward index is updated atomically.
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | Fixed emission amount with no halving | Informational | By Design |
+| I-03 | Permissionless mint callable by any eligible LP holder | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** None — the contract owner has no economic privileges. Ownership only controls the `set-contract-owner` function itself. The owner cannot modify emission amount, threshold, or mint behavior.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+
+### [I-02] Fixed emission amount with no halving
+
+- **Severity:** Informational
+- **Location:** `AMOUNT` constant
+- **Description:** The emission amount is hardcoded at `u10000000000` (10,000 STREET at 6 decimals) per mint. There is no halving schedule, epoch-based reduction, or governance mechanism to adjust inflation.
+- **Impact:** Linear inflation indefinitely. STREET supply grows by up to 10,000 tokens per block with no built-in decay.
+- **Status:** By design. Perpetual fixed emissions are the intended model. No future governance mechanism or additional contracts can alter this — the emission amount is an immutable constant.
+
+### [I-03] Permissionless mint callable by any eligible LP holder
+
+- **Severity:** Informational
+- **Location:** `mint`
+- **Description:** Any address holding ≥ 0.1% of total CREDIT supply (`total-lp / THRESHOLD`) can trigger emission. There is no restriction to a specific caller, bot, or admin. The 0.1% threshold uses integer division — at very low total LP supplies, `min-credit` rounds to 0, allowing any LP holder (even with 1 unit) to trigger emission.
+- **Impact:** None — permissionless emission is the intended incentive mechanism. The integer division edge case at very low LP supply (< 1000 units) is practically irrelevant since pool initialization creates meaningful supply.
+- **Status:** Accepted. By design.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `set-contract-owner` gated by `contract-caller` check. `mint` is permissionless but gated by LP balance threshold. |
+| 2 | Input Validation | Pass — `mint` takes no user inputs. All values derived from chain state and constants. |
+| 3 | Arithmetic | Pass — subtraction `burn-block-height - last-mint` is safe because `last-burn-block` initializes to 0 and `burn-block-height` is always ≥ 0. Division `total-lp / THRESHOLD` floors to 0 at low supply (see I-03). Epoch increment cannot overflow in practice (would require ~$3.4 \times 10^{38}$ mints). |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. `street-token.mint` and `update-rewards-b` both wrapped in `try!` — any failure reverts all state including epoch/block updates. |
+| 5 | Asset Safety | Pass — owner cannot mint tokens. Mint amount is a hardcoded constant. Tokens go directly to `street-rewards` contract, not to the caller. |
+| 6 | Trait Usage | N/A — no trait parameters. |
+| 7 | Authorization Chains | Pass — uses `contract-caller` for both owner check and LP balance lookup. `emission-controller` is whitelisted in `street-token.mint` and `street-rewards.update-rewards-b`. |
+| 8 | State Consistency | Pass — `current-epoch` and `last-burn-block` are updated after successful cross-contract calls. If either `try!` fails, state rolls back atomically. |
+| 9 | Denial of Service | Pass — no blocking conditions. Once-per-block rate limit is by design, not a DoS vector. First eligible caller per block wins; others get `ERR_EMISSION_INTERVAL`. |
+| 10 | Upgrade / Migration | Informational — emission amount and threshold are immutable constants. Single-step ownership transfer (see I-01). |
+
+## Recommendations
+
+No code changes recommended. All three findings are intentional design choices. Perpetual fixed emissions and permissionless minting are immutable by design.
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Emission Controller
+
+;; errors
+;; 4 unique error codes with u93x prefix — all tested, no overlap with other contracts
+(define-constant ERR_EMISSION_INTERVAL (err u931))
+(define-constant ERR_NOT_CONTRACT_OWNER (err u932))
+(define-constant ERR_NOT_ELIGIBLE (err u933))
+(define-constant ERR_NO_LIQUIDITY (err u934))
+
+;; constants
+
+;; 10,000 STREET per emission (6 decimals) — hardcoded, immutable after deployment
+(define-constant AMOUNT u10000000000)
+
+;; 0.1% of total LP supply required to trigger mint — integer division floors to 0 at low supply
+(define-constant THRESHOLD u1000)
+
+;; variables
+
+;; monotonically increasing — counts total successful mints
+(define-data-var current-epoch uint u0)
+
+;; tracks last block an emission occurred — used for once-per-block rate limiting
+(define-data-var last-burn-block uint u0)
+
+;; initialized to deployer at deployment — owner has no economic privileges
+(define-data-var contract-owner principal tx-sender)
+
+;; permissionless emission trigger — any LP holder with ≥ 0.1% of CREDIT supply can call
+(define-public (mint)
+  (let (
+      ;; snapshot last emission block for interval check
+      (last-mint (var-get last-burn-block))
+
+      ;; blocks since last emission — subtraction safe because last-burn-block ≤ burn-block-height
+      (blocks-elapsed (- burn-block-height last-mint))
+
+      ;; total LP supply — unwrap-panic safe, get-total-supply always returns (ok uint)
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+
+      ;; caller's LP balance — uses contract-caller for authorization
+      (caller-credit (unwrap-panic (contract-call? .credit-token get-balance contract-caller)))
+
+      ;; minimum LP required — integer division floors to 0 when total-lp < THRESHOLD (see I-03)
+      (min-credit (/ total-lp THRESHOLD))
+    )
+    (begin
+      ;; requires active liquidity pool — prevents emission before pool initialization
+      (asserts! (> total-lp u0) ERR_NO_LIQUIDITY)
+
+      ;; once-per-block rate limit — first eligible caller wins per block
+      (asserts! (>= blocks-elapsed u1) ERR_EMISSION_INTERVAL)
+
+      ;; caller must hold ≥ 0.1% of total CREDIT — incentivizes LP participation
+      (asserts! (>= caller-credit min-credit) ERR_NOT_ELIGIBLE)
+
+      ;; mint STREET directly to street-rewards contract — caller receives no tokens
+      ;; emission-controller is whitelisted in street-token.mint
+      (try! (contract-call? .street-token mint AMOUNT .street-rewards))
+
+      ;; update reward index so existing LP holders can claim proportional share
+      ;; emission-controller is whitelisted in street-rewards.update-rewards-b
+      ;; if this fails, the street-token mint above also reverts (atomic)
+      (try! (contract-call? .street-rewards update-rewards-b AMOUNT))
+
+      ;; state updates only after both cross-contract calls succeed
+      (var-set current-epoch (+ (var-get current-epoch) u1))
+      (var-set last-burn-block burn-block-height)
+      (ok {
+        amount: AMOUNT,
+        block: burn-block-height,
+        epoch: (var-get current-epoch),
+      })
+    )
+  )
+)
+
+;; single-step ownership transfer — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — only direct caller, not tx-sender chain
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — no access control needed ===
+
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+;; returns total successful emission count
+(define-read-only (get-current-epoch)
+  (ok (var-get current-epoch)))
+
+;; returns block height of last emission — used to calculate next eligible block
+(define-read-only (get-last-burn-block)
+  (ok (var-get last-burn-block)))
+
+```
+</div>

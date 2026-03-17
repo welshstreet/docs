@@ -1,0 +1,273 @@
+import { Callout } from 'nextra/components'
+
+# Welsh Faucet Audit
+
+<Callout type="info">
+**Testnet-Only Contract**  
+The welsh-faucet contract is deployed exclusively on testnet for development and testing purposes. It is not deployed to mainnet.
+</Callout>
+
+## Description
+
+The welsh faucet provides testnet WELSH tokens to developers and testers via a cooldown-gated permissionless claim mechanism. Users call `request` to receive 1 million WELSH tokens per claim, with a minimum wait of 10 blocks (default) between claims. The cooldown period is adjustable by the contract owner. The faucet uses `tx-sender` authorization for claims (not `contract-caller`), preventing contracts from claiming on behalf of users. Token transfers use the `as-contract?` and `with-ft` pattern to enable the faucet contract to spend its own balance. The contract provides several read-only functions for checking cooldown status, last request timing, and faucet balance.
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | tx-sender authorization in request prevents contract-based claims | Informational | By Design |
+| I-03 | Hardcoded faucet amount | Informational | By Design |
+| I-04 | No cooldown bounds validation | Informational | By Design |
+| I-05 | No owner withdrawal function | Informational | By Design |
+| I-06 | unwrap-panic in get-balance read-only function | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** Low — the contract owner controls only `set-contract-owner` and `set-cooldown`. Owner cannot extract funds, redirect claims, or manipulate user balances.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+
+### [I-02] tx-sender authorization in request prevents contract-based claims
+
+- **Severity:** Informational
+- **Location:** `request`
+- **Description:** The `request` function uses `tx-sender` to identify the recipient: `(recipient tx-sender)`. This differs from most protocol functions which use `contract-caller`. As a result, if a contract calls the faucet, the tokens are sent to the contract itself (not the end user), and the cooldown tracking applies to the contract principal (not individual users).
+- **Impact:** Contracts cannot claim faucet tokens on behalf of multiple users. Each contract can only claim once per cooldown period for itself. This prevents batch-claim abuse patterns where a single contract aggregates claims for many users.
+- **Status:** By design. The `tx-sender` pattern is an anti-abuse mechanism for testnet faucets. Direct user transactions are required.
+
+### [I-03] Hardcoded faucet amount
+
+- **Severity:** Informational
+- **Location:** `AMOUNT` constant
+- **Description:** The faucet dispenses a fixed amount per claim: `AMOUNT = u1000000000000` (1 million WELSH at 6 decimals). This value is immutable — adjusting it requires contract redeployment.
+- **Impact:** If testnet token economics change or the faucet amount becomes inadequate, the contract must be redeployed. No operational impact — this is a testnet-only contract.
+- **Status:** By design. Immutable constants are consistent with protocol design philosophy.
+
+### [I-04] No cooldown bounds validation
+
+- **Severity:** Informational
+- **Location:** `set-cooldown`
+- **Description:** The owner can set the cooldown to any `uint` value via `set-cooldown`. No minimum or maximum bounds are enforced. Setting cooldown to `u0` enables instant repeated claims. Setting an extremely high value (e.g., `u1000000000`) effectively disables the faucet.
+- **Impact:** Owner has full discretion over faucet rate limiting. A malicious or compromised owner could disable the faucet or enable unlimited claims. For a testnet faucet, this flexibility is acceptable.
+- **Status:** By design. Owner control over cooldown parameters is intentional for testnet operational flexibility.
+
+### [I-05] No owner withdrawal function
+
+- **Severity:** Informational
+- **Location:** N/A
+- **Description:** The contract does not provide a function for the owner to withdraw or recover tokens held by the faucet. Tokens sent to the faucet can only be distributed via user claims. If the faucet needs to be drained, the owner must wait for users to claim all tokens or redeploy the contract.
+- **Impact:** Owner cannot rug pull testnet tokens. The faucet is trust-minimized — once funded, tokens are committed to user distribution. However, overfunding cannot be reversed.
+- **Status:** By design. Observed pattern: testnet faucets typically omit owner withdrawal to prevent abuse and demonstrate commitment to token distribution.
+
+### [I-06] unwrap-panic in get-balance read-only function
+
+- **Severity:** Informational
+- **Location:** `get-balance`
+- **Description:** The `get-balance` read-only function uses `unwrap-panic` to handle the result from `welshcorgicoin.get-balance`. If `get-balance` returns an error (unlikely for a standard read-only), the function will panic and the read call will fail.
+- **Impact:** A malformed or non-standard `welshcorgicoin` implementation could cause `get-balance` to fail. Since this is read-only, no state changes are affected. Callers would receive an error instead of the balance. The referenced `welshcorgicoin` contract is a pre-existing mainnet contract known to work correctly.
+- **Status:** Accepted. The use of `unwrap-panic` in read-only functions is acceptable when the underlying contract is trusted. `get-balance` is expected to always return `(ok uint)` for valid principals.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `request` is permissionless with cooldown rate limiting. Admin functions (`set-contract-owner`, `set-cooldown`) gated by `contract-owner` via `contract-caller`. `transformer` is private. |
+| 2 | Input Validation | Pass — cooldown enforcement in `request` via `stacks-block-height` comparison. No explicit bounds on `set-cooldown` (see I-04). `AMOUNT` is constant. |
+| 3 | Arithmetic | Pass — single subtraction: `(- stacks-block-height (get block last-entry))` and `(- (var-get cooldown) blocks-since-request)`. Both operands are unsigned integers from trusted sources. Block height is monotonically increasing. Overflow protected by Clarity runtime. |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. `request` updates `last-request` map before calling `transformer`. Map entry prevents cooldown bypass. |
+| 5 | Asset Safety | Pass — owner cannot withdraw funds (see I-05). `transformer` is private with hardcoded token reference (`.welshcorgicoin`). Transfer amount is constant. Users can only claim for themselves due to `tx-sender` usage (see I-02). |
+| 6 | Trait Usage | Pass — `transformer` accepts `<sip-010>` trait parameter but is private. Only called internally with `.welshcorgicoin`. External callers cannot inject malicious trait implementations. |
+| 7 | Authorization Chains | Pass — `request` uses `tx-sender` for recipient identity (see I-02 for rationale). Admin functions use `contract-caller` (consistent with protocol). `transformer` uses `as-contract?` to change execution context to contract principal, enabling token transfers from contract balance. `with-ft` adds post-condition for amount limit. |
+| 8 | State Consistency | Pass — `last-request` map updated atomically before transfer. First-time users have no map entry, bypassing cooldown check. Repeat users have their entry updated with current `stacks-block-height`. All state changes are atomic. |
+| 9 | Denial of Service | Pass — no blocking conditions. `request` is permissionless subject only to cooldown. Owner can set cooldown to disable faucet but cannot censor individual users. No loops — all operations are O(1). |
+| 10 | Upgrade / Migration | Informational — single-step ownership transfer (see I-01). Cooldown adjustable but no bounds (see I-04). AMOUNT immutable (see I-03). No token recovery mechanism (see I-05). |
+
+## Recommendations
+
+No code changes recommended. All six informational findings are intentional design choices appropriate for a testnet faucet. The use of `tx-sender` (I-02) is an effective anti-abuse mechanism. The lack of owner withdrawal (I-05) demonstrates commitment to fair token distribution.
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Faucet
+
+;; SIP-010 trait for token transfers — transformer accepts trait parameter but is private
+(use-trait sip-010 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; errors
+;; 2 unique error codes with u99x prefix — testnet-only contract
+(define-constant ERR_NOT_CONTRACT_OWNER (err u991))
+(define-constant ERR_COOLDOWN (err u992))
+
+;; constants
+;; u1000000000000 = 1 million WELSH at 6 decimals — immutable (see I-03)
+(define-constant AMOUNT u1000000000000)
+
+;; variables
+
+;; initialized to deployer at deployment — transferable via set-contract-owner (see I-01)
+(define-data-var contract-owner principal tx-sender)
+
+;; minimum blocks between claims — default 10, adjustable by owner with no bounds (see I-04)
+(define-data-var cooldown uint u10)
+
+;; tracks last claim block for each user — prevents cooldown bypass
+(define-map last-request
+  { user: principal }
+  { block: uint }
+)
+
+;; permissionless claim function — dispenses AMOUNT tokens per call subject to cooldown
+;; uses tx-sender for recipient identity — prevents contracts from claiming for users (see I-02)
+(define-public (request)
+  (let (
+    ;; recipient is tx-sender (not contract-caller) — see I-02 for anti-abuse rationale
+    (recipient tx-sender)
+  )
+    ;; check if user has claimed before
+    (match (map-get? last-request { user: recipient })
+      last-entry
+        (begin
+          ;; repeat claim — enforce cooldown period
+          ;; blocks-since-last-claim must be >= cooldown
+          (asserts! (>= (- stacks-block-height (get block last-entry)) (var-get cooldown)) ERR_COOLDOWN)
+          
+          ;; update last-request block to current height — prevents double-claim in same block
+          (map-set last-request { user: recipient } { block: stacks-block-height })
+          
+          ;; transfer AMOUNT tokens from faucet to recipient
+          (try! (transformer .welshcorgicoin AMOUNT recipient))
+          (ok true)
+        )
+      ;; first-time claim — no cooldown check, create map entry
+      (begin
+        ;; initialize last-request tracking for new user
+        (map-set last-request { user: recipient } { block: stacks-block-height })
+        
+        ;; transfer AMOUNT tokens
+        (try! (transformer .welshcorgicoin AMOUNT recipient))
+        (ok true)
+      )
+    )
+  )
+)
+
+;; single-step ownership transfer — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — consistent with all protocol contracts
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    
+    ;; irreversible if transferred to wrong address — owner controls only metadata, not funds
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; adjust cooldown period — no bounds validation (see I-04)
+;; owner can set to u0 (instant claims) or extremely high value (disable faucet)
+(define-public (set-cooldown (blocks uint))
+  (begin
+    ;; contract-caller check — same pattern as set-contract-owner
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    
+    ;; update cooldown — no minimum or maximum bounds enforced (see I-04)
+    (var-set cooldown blocks)
+    (ok { cooldown: blocks })
+  )
+)
+
+;; private function for token transfers from faucet contract to user
+;; uses as-contract? and with-ft pattern for post-condition compliance
+(define-private (transformer
+    (token <sip-010>)
+    (amount uint)
+    (recipient principal)
+  )
+  ;; as-contract? changes execution context — tx-sender becomes contract principal
+  ;; with-ft adds post-condition: contract can spend up to `amount` of `token`
+  ;; "*" is wildcard for asset name (resolved to token contract at runtime)
+  (as-contract? ((with-ft (contract-of token) "*" amount))
+    ;; transfer from faucet (tx-sender = contract) to recipient
+    ;; amount is bounded by with-ft post-condition — prevents over-spending
+    (try! (contract-call? token transfer amount tx-sender recipient none))
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — no access control needed ===
+
+;; returns faucet's welshcorgicoin balance — uses unwrap-panic (see I-06)
+(define-read-only (get-balance)
+  ;; as-contract? to check contract's own balance (not caller's)
+  (as-contract? ()
+    ;; unwrap-panic: assumes get-balance always returns (ok uint) — see I-06
+    ;; if welshcorgicoin.get-balance returns error, this read-only function will panic
+    (unwrap-panic (contract-call? .welshcorgicoin get-balance tx-sender))
+  )
+)
+
+;; returns current contract owner
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+;; returns current cooldown period in blocks
+(define-read-only (get-cooldown)
+  (ok (var-get cooldown)))
+
+;; returns user's last claim block height — (some uint) if claimed before, none otherwise
+(define-read-only (get-last-request (user principal))
+  (ok (map-get? last-request { user: user })))
+
+;; returns blocks remaining until user can claim again — u0 if ready now
+(define-read-only (get-next-request (user principal))
+  (match (map-get? last-request { user: user })
+    last-entry
+      (let ((blocks-since-request (- stacks-block-height (get block last-entry))))
+        ;; if cooldown period has passed, user can claim now (u0 blocks remaining)
+        ;; otherwise, return blocks remaining
+        (if (>= blocks-since-request (var-get cooldown))
+          (ok u0)
+          (ok (- (var-get cooldown) blocks-since-request))
+        )
+      )
+    ;; no prior request — user can claim immediately
+    (ok u0)
+  )
+)
+
+;; composite function — returns all faucet state for a user
+(define-read-only (get-faucet-info (user principal))
+  (let (
+    (cooldown-period (var-get cooldown))
+    (last-req (map-get? last-request { user: user }))
+  )
+    (match last-req
+      last-entry
+        (let ((blocks-since-request (- stacks-block-height (get block last-entry))))
+          (ok {
+            ;; blocks until next claim (0 if ready now)
+            blocks-remaining: (if (>= blocks-since-request cooldown-period)
+              u0
+              (- cooldown-period blocks-since-request)
+            ),
+            ;; current cooldown setting
+            cooldown: cooldown-period,
+            ;; when user last claimed
+            last-request: (some (get block last-entry)),
+          })
+        )
+      ;; first-time user — no claim history
+      (ok {
+        blocks-remaining: u0,
+        cooldown: cooldown-period,
+        last-request: none,
+      })
+    )
+  )
+)
+```
+</div>

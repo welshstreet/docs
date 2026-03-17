@@ -775,3 +775,9 @@ The decrease/increase/update rewards functions are designed to update the user's
 To offer the best UX possible and prevent users from losing their claim to rewards, the Welsh Street Exchange has implemented safety checks so users cannot change their liquidity position using the frontend without being reminded to claim rewards. However, interacting with the contracts directly, for example using the Stacks explorer or CLI, these protections do not exist.
 
 This isn't manipulation or off-chain shenanigans affecting on-chain accounting! The Welsh Street frontend simply checks the user's balance and changes the state of the liquidity function buttons to notify users that they have rewards.
+
+## Transfer Rewards
+
+Due to the mathematical nature of the zero debt cumulative distribution system and global index accounting, it is not possible to transfer unclaimed rewards directly from user to user.  This type of transfer would require individual accounts for each user onchain and it is not practical.
+
+Any contract, frontend, or application that promises unclaimed rewards between users is fraudulent and most likely a scam. The correct way to transfer unclaimed rewards to another user is to first claim those rewards, then perform a normal token transfer using a preferred and secure wallet.

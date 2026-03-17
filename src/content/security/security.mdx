@@ -1,0 +1,83 @@
+# Security Audit Methodology
+
+Welsh Street preformed the initial security audit with Claude Sonnet 4.5. After completed unit testing and line by line code descriptions, each contract was reviewed by the Claude model, line by line and presented below.
+
+## Contracts Analyzed
+
+Each per-contract security audit follows a consistent structure:
+
+- **Description** — Contract purpose and architectural role within the protocol.
+- **Findings** — Issues identified with severity ratings, plus a checklist table scoring each of the 10 audit criteria.
+- **Recommendations** — Suggested changes or confirmation that no changes are needed.
+- **Contract Comments** — Full contract source annotated line-by-line with security assessments inline as Clarity comments.
+
+| Contract | Purpose |
+|----------|---------|
+| `credit-controller.clar` | CREDIT-token transfer controller and reward updates |
+| `credit-token.clar` | LP token (SIP-010) |
+| `emission-controller.clar` | Token emission schedule |
+| `street-controller.clar` | STREET token minting controller |
+| `street-market.clar` | DEX / AMM |
+| `street-nft.clar` | NFT collection |
+| `street-rewards.clar` | LP reward distribution |
+| `street-token.clar` | Native token with emissions |
+| `welsh-faucet.clar` | Testnet faucet |
+
+**Excluded:** `welshcorgicoin.clar` — pre-existing mainnet contract, cannot be modified.
+
+## Test Coverage
+
+All 9 contracts have **100% function and error coverage** (79 functions, 35 error codes, 85 test files). Full breakdown available in the [testing report](/core/testing).
+
+## Audit Checklist
+
+Each contract is evaluated against:
+
+1. **Access Control** — Admin gating, `contract-caller` bypass potential
+2. **Input Validation** — Bounds checks on public function inputs
+3. **Arithmetic** — Overflow/underflow, division by zero, rounding
+4. **Reentrancy / Call Ordering** — State manipulation via interleaved calls
+5. **Asset Safety** — Transfer/mint/burn guards
+6. **Trait Usage** — Malicious trait implementation exploits
+7. **Authorization Chains** — `tx-sender` vs `contract-caller` correctness
+8. **State Consistency** — Partial execution leaving inconsistent state
+9. **Denial of Service** — Functions blocked or made unusable
+10. **Upgrade / Migration Risks** — Owner transfer safety, irreversible changes
+
+## Severity Definitions
+
+| Severity | Definition |
+|----------|------------|
+| **Critical** | Direct loss of funds or complete protocol compromise |
+| **High** | Significant impact requiring immediate fix before deployment |
+| **Medium** | Conditional exploit or meaningful governance risk |
+| **Low** | Minor issue, best practice violation, or unlikely scenario |
+| **Informational** | Observation, optimization, or style suggestion |
+
+## Design Clarifications
+
+These patterns were reviewed and confirmed as intentional:
+
+- **Overflow** — Handled by Clarity runtime
+- **Slippage** — Omitted on-chain; handled by frontend post-conditions
+- **Reentrancy** — Safe in Clarity due to atomic transactions
+- **Mixed auth patterns** — `tx-sender`/`contract-caller` usage varies intentionally per authorization context
+- **Contract-only mint/burn** — Prevents owner manipulation
+- **Hardcoded constants** — Immutable by design for predictability
+- **Integer precision** — Acceptable on-chain precision loss
+
+## Conclusion
+
+Strong security foundations. SIP-010 compliant tokens, atomic state management, proper access control separation, and Clarity runtime protections. The medium finding is a deliberate design choice favoring immutability over flexibility.
+
+## Per-Contract Reports
+
+- [credit-controller](/security/credit-controller)
+- [credit-token](/security/credit-token)
+- [emission-controller](/security/emission-controller)
+- [street-controller](/security/street-controller)
+- [street-market](/security/street-market)
+- [street-nft](/security/street-nft)
+- [street-rewards](/security/street-rewards)
+- [street-token](/security/street-token)
+- [welsh-faucet](/security/welsh-faucet)

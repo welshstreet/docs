@@ -1,0 +1,641 @@
+import { Callout } from 'nextra/components'
+
+# Street Rewards Audit
+
+## Description
+
+The street rewards contract is the reward distribution engine for the Welsh Street Exchange. It tracks two parallel reward streams — Token A (WELSH via `welshcorgicoin`) and Token B (STREET via `street-token`) — distributed proportionally to LP holders based on their CREDIT token balance. The contract uses a global index model: each reward deposit increments a global index by `amount * PRECISION / total-lp`, and each user's unclaimed rewards are computed as `balance * (global-index - user-index) / PRECISION - debt`. Reward state is synchronized on every LP balance change via `increase-rewards` and `decrease-rewards`, called by `credit-controller` (transfers) and `street-market` (provide/remove/burn liquidity). A permissionless `cleanup-rewards` function recovers tokens sent directly to the contract (bypassing `donate-rewards`) and redistributes them after a 144-block cooldown.
+
+## Findings
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| I-01 | Single-step ownership transfer | Informational | By Design |
+| I-02 | Integer precision loss in reward calculations | Informational | By Design |
+| I-03 | Forfeited rewards redistribute to all remaining LPs including the decrease caller | Informational | By Design |
+| I-04 | claim-rewards does not update user index to current global | Informational | By Design |
+| I-05 | donate-rewards accepts zero for both amounts | Informational | By Design |
+| I-06 | cleanup-rewards dust threshold is hardcoded | Informational | By Design |
+
+### [I-01] Single-step ownership transfer
+
+- **Severity:** Informational
+- **Location:** `set-contract-owner`
+- **Description:** Ownership transfers in a single step with no confirmation from the new owner. If transferred to an incorrect address, ownership is permanently lost.
+- **Impact:** None — the contract owner has no economic privileges. Ownership only controls `set-contract-owner`. The owner cannot claim, redirect, or manipulate rewards.
+- **Status:** Accepted. Consistent pattern across all protocol contracts.
+
+### [I-02] Integer precision loss in reward calculations
+
+- **Severity:** Informational
+- **Location:** `update-rewards-a`, `update-rewards-b`, `claim-rewards`, `decrease-rewards`, `increase-rewards`
+- **Description:** The global index model uses `PRECISION` (10^9) to scale integer arithmetic, but truncation occurs at every division. In `update-rewards-a/b`, `index-increment = floor(amount * PRECISION / total-lp)` loses the remainder. In `claim-rewards`, `earned = floor(balance * delta / PRECISION)` truncates again. In `decrease-rewards`, forfeit and redistribution calculations each truncate independently. These compound across operations.
+- **Impact:** Small dust amounts become permanently unclaimable over time. The `cleanup-rewards` mechanism exists specifically to recover this accumulated dust and redistribute it. 10^9 precision provides sub-micro-token accuracy for practical balances.
+- **Status:** By design. Integer precision loss is inherent to on-chain reward math. The cleanup mechanism is the explicit mitigation.
+
+### [I-03] Forfeited rewards redistribute to all remaining LPs including the decrease caller
+
+- **Severity:** Informational
+- **Location:** `decrease-rewards`
+- **Description:** When a user's LP balance decreases (transfer or removal), they forfeit unclaimed rewards proportional to the decreased amount. The forfeited amount is redistributed by incrementing the global index, which benefits all remaining LP holders — including the user themselves if they still hold LP after the decrease. For a partial removal, the user forfeits from their old balance but receives back a fraction of their own forfeit on their remaining balance.
+- **Impact:** The self-redistribution is an inherent property of the global index model. The user's preserved rewards (via index adjustment) plus the small self-redistributed amount approximate the correct total. Cannot be mitigated with a different mathematical or accounting system.
+- **Status:** By design. Tested explicitly in debug tests confirming this behavior is expected.
+
+### [I-04] claim-rewards does not update user index to current global
+
+- **Severity:** Informational
+- **Location:** `claim-rewards`
+- **Description:** After claiming, the user's `index-a` and `index-b` remain at their original values. The claimed amount is tracked by incrementing `debt-a` and `debt-b` instead. This means `earned - debt` gives the correct unclaimed for subsequent claims without requiring index advancement.
+- **Impact:** None — the debt model and index model are mathematically equivalent for computing unclaimed rewards. The debt approach avoids recalculating preserved rewards from scratch on each claim.
+- **Status:** By design. Dual-method approach confirmed in tests: Method 1 (debt adjustment) used by `claim-rewards`, Method 2 (index adjustment) used by `increase-rewards` and `decrease-rewards`.
+
+### [I-05] donate-rewards accepts zero for both amounts
+
+- **Severity:** Informational
+- **Location:** `donate-rewards`
+- **Description:** `donate-rewards` does not check that at least one of `amount-a` or `amount-b` is non-zero. Calling with `(u0, u0)` succeeds as a no-op — no tokens transfer, no state changes, no error.
+- **Impact:** None — the call wastes the caller's transaction fee. No state corruption. `update-rewards-a/b` are never reached because both `if` branches take the `true` path.
+- **Status:** Accepted. Adding zero-amount validation would complicate the interface for valid `(X, 0)` and `(0, X)` donations.
+
+### [I-06] cleanup-rewards dust threshold is hardcoded
+
+- **Severity:** Informational
+- **Location:** `calculate-cleanup-rewards`, `dust-threshold`
+- **Description:** The `dust-threshold` of `u10000` (0.01 tokens at 6 decimals) is hardcoded in the private `calculate-cleanup-rewards` function. When `actual == outstanding` and `outstanding < dust-threshold`, cleanup treats the entire balance as reclaimable. This threshold cannot be adjusted.
+- **Impact:** The threshold defines the boundary between "precision dust from rounding" and "legitimate outstanding rewards." At 0.01 tokens, it is conservative enough to avoid sweeping legitimate claims while recovering meaningful accumulations.
+- **Status:** By design. Immutable constant consistent with the protocol's preference for hardcoded parameters.
+
+### Checklist Results
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Access Control | Pass — `decrease-rewards` and `increase-rewards` gated to `.credit-controller` and `.street-market`. `update-rewards-a` gated to `.street-controller`, `.street-market`, and `.street-rewards`. `update-rewards-b` gated to `.street-market`, `.street-rewards`, and `.emission-controller`. `claim-rewards`, `donate-rewards`, and `cleanup-rewards` are permissionless. `set-contract-owner` gated by `contract-owner`. |
+| 2 | Input Validation | Pass — zero-amount checks on `decrease-rewards`, `increase-rewards`, `update-rewards-a`, and `update-rewards-b`. `claim-rewards` handles zero unclaimed gracefully (skips transfer, debt unchanged). `cleanup-rewards` validates 144-block interval. |
+| 3 | Arithmetic | Pass — `PRECISION` (10^9) provides high-resolution scaling. All divisions truncate toward zero (standard). Subtraction `earned - debt` guarded by `(if (> earned debt) ...)` returning 0 otherwise. `old-balance` in `decrease-rewards` is `balance + amount` (reconstructed pre-transfer balance) — safe because `decrease-rewards` is called after the LP transfer. Overflow protected by Clarity runtime. See I-02 for precision loss analysis. |
+| 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. `claim-rewards` transfers tokens before updating debt/claimed state, but atomic execution prevents reentrancy. `decrease-rewards` is called by `street-market` before LP burn and by `credit-controller` after LP transfer — both orderings are correct for their context. |
+| 5 | Asset Safety | Pass — owner cannot claim, redirect, or extract rewards. `transformer` is private — trait parameter cannot be externally supplied. All token transfers use `try!` with atomic revert. Cleanup can only redistribute tokens already held by the contract. |
+| 6 | Trait Usage | Pass — `transformer` accepts `<sip-010>` trait but is private. Only called internally with `.welshcorgicoin` and `.street-token`. External callers cannot inject malicious trait implementations. |
+| 7 | Authorization Chains | Pass — `claim-rewards` uses `contract-caller` for user identity and `get-balance` lookup. `decrease-rewards` and `increase-rewards` accept a `user` principal parameter but are restricted to authorized contracts. `transformer` uses `as-contract` for outbound transfers. `update-rewards-a/b` use `contract-caller` whitelist — `street-rewards` is self-authorized for cleanup redistribution via `as-contract`. |
+| 8 | State Consistency | Pass — `claim-rewards` updates `total-claimed` and user `debt` atomically. `decrease-rewards` updates global index, recalculates preserve index, and sets user state atomically. If user's balance reaches 0, entry is deleted via `map-delete`. `increase-rewards` handles both new users (fresh entry) and existing users (index adjustment) correctly. Re-entry after complete exit initializes with `debt: u0` (phantom debt bug was fixed). |
+| 9 | Denial of Service | Pass — no blocking conditions. `claim-rewards` is permissionless for any LP holder. `cleanup-rewards` rate-limited to once per 144 blocks but cannot be permanently blocked. No loops — all operations are O(1). |
+| 10 | Upgrade / Migration | Informational — all parameters (`PRECISION`, `CLEANUP_INTERVAL`, `dust-threshold`) are immutable. Single-step ownership transfer (see I-01). Global index is append-only — cannot be decremented. |
+
+## Recommendations
+
+No code changes recommended. All six findings are informational observations on intentional design. The precision loss (I-02) is explicitly mitigated by the cleanup mechanism (I-06).
+
+## Contract Comments
+
+<div className="code-transparent">
+```clarity
+;; Welsh Street Rewards
+
+;; SIP-010 trait import — used by the private transformer function
+(use-trait sip-010 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; errors
+;; 4 unique error codes with u97x prefix — all tested, no overlap with other contracts
+(define-constant ERR_ZERO_AMOUNT (err u971))
+(define-constant ERR_NOT_CONTRACT_OWNER (err u972))
+(define-constant ERR_NOT_AUTHORIZED (err u973))
+(define-constant ERR_CLEANUP_INTERVAL (err u974))
+ 
+;; constants
+
+;; 10^9 scaling factor for index arithmetic — provides sub-micro-token precision (see I-02)
+(define-constant PRECISION u1000000000)
+
+;; minimum blocks between cleanup calls — ~1 day at ~10 min/block
+(define-constant CLEANUP_INTERVAL u144)
+
+;; variables
+
+;; initialized to deployer — owner has no economic privileges (see I-01)
+(define-data-var contract-owner principal tx-sender)
+
+;; global reward indexes — monotonically increasing, scaled by PRECISION
+;; index-a tracks WELSH rewards, index-b tracks STREET rewards
+(define-data-var global-index-a uint u0)
+(define-data-var global-index-b uint u0)
+
+;; rate-limiting for cleanup — tracks last cleanup block height
+(define-data-var last-cleanup-block uint u0)
+
+;; cumulative accounting — used by cleanup to detect untracked token inflows
+(define-data-var total-distributed-a uint u0)
+(define-data-var total-distributed-b uint u0)
+(define-data-var total-claimed-a uint u0)
+(define-data-var total-claimed-b uint u0)
+
+;; per-user reward state
+;; balance: cached LP balance at last interaction
+;; block: block height at last interaction
+;; debt-a/b: cumulative claimed amounts — used in claim-rewards (Method 1) (see I-04)
+;; index-a/b: user's snapshot of global index — used in increase/decrease-rewards (Method 2)
+(define-map users
+  { account: principal }
+  {
+    balance: uint,
+    block: uint,
+    debt-a: uint,
+    debt-b: uint,
+    index-a: uint,
+    index-b: uint
+  }
+)
+
+;; permissionless — any LP holder can claim their proportional WELSH and STREET rewards
+;; uses debt model (Method 1): index stays fixed, debt increments by claimed amount (see I-04)
+(define-public (claim-rewards)
+  (let (
+    ;; live LP balance from credit-token — unwrap-panic safe (always returns ok)
+    (balance (unwrap-panic (contract-call? .credit-token get-balance contract-caller)))
+
+    ;; default to zero-state for users who haven't interacted with rewards yet
+    (info (default-to {
+      balance: u0,
+      block: u0,
+      debt-a: u0,
+      debt-b: u0,
+      index-a: u0,
+      index-b: u0}
+      (map-get? users { account: contract-caller })))
+
+    (current-global-a (var-get global-index-a))
+    (current-global-b (var-get global-index-b))
+    (debt-a (get debt-a info))
+    (debt-b (get debt-b info))
+    (user-index-a (get index-a info))
+    (user-index-b (get index-b info))
+
+    ;; earned = balance * (global - user_index) / PRECISION — total ever earned
+    ;; truncation here is the primary source of precision dust (see I-02)
+    (earned-a (/ (* balance (- current-global-a user-index-a)) PRECISION))
+    (earned-b (/ (* balance (- current-global-b user-index-b)) PRECISION))
+
+    ;; unclaimed = earned - debt — guarded against underflow with (if (> ...))
+    (unclaimed-a (if (> earned-a debt-a) (- earned-a debt-a) u0))
+    (unclaimed-b (if (> earned-b debt-b) (- earned-b debt-b) u0))
+  )
+    (begin
+      ;; transfer WELSH rewards if any — transformer uses as-contract for outbound
+      (if (> unclaimed-a u0)
+        (try! (transformer .welshcorgicoin unclaimed-a contract-caller))
+        true
+      )
+      ;; transfer STREET rewards if any
+      (if (> unclaimed-b u0)
+        (try! (transformer .street-token unclaimed-b contract-caller))
+        true
+      )
+
+      ;; update cumulative claimed totals — used by cleanup accounting
+      (var-set total-claimed-a (+ (var-get total-claimed-a) unclaimed-a))
+      (var-set total-claimed-b (+ (var-get total-claimed-b) unclaimed-b))
+
+      ;; update user state — debt increases by claimed amount, index stays unchanged
+      ;; balance snapshot updated, block preserved from previous interaction
+      (map-set users { account: contract-caller } {
+        balance: balance,
+        block: (get block info),
+        debt-a: (+ debt-a unclaimed-a),
+        debt-b: (+ debt-b unclaimed-b),
+        index-a: user-index-a,
+        index-b: user-index-b
+        })
+      (ok {
+        amount-a: unclaimed-a,
+        amount-b: unclaimed-b,
+        })  
+    )
+  )
+)
+
+;; private — calculates reclaimable tokens from direct transfers or precision dust
+;; compares actual contract balance against outstanding (distributed - claimed)
+;; excess = actual - outstanding, or full balance if outstanding < dust-threshold (see I-06)
+(define-private (calculate-cleanup-rewards)
+  (let (
+    ;; actual token balances held by this contract
+    (actual-a (unwrap-panic (contract-call? .welshcorgicoin get-balance .street-rewards)))
+    (actual-b (unwrap-panic (contract-call? .street-token get-balance .street-rewards)))
+
+    (claimed-a (var-get total-claimed-a))
+    (claimed-b (var-get total-claimed-b))
+    (distributed-a (var-get total-distributed-a))
+    (distributed-b (var-get total-distributed-b))
+
+    ;; 0.01 tokens at 6 decimals — below this, outstanding is treated as dust (see I-06)
+    (dust-threshold u10000)
+
+    ;; outstanding = what users theoretically can still claim
+    ;; safe subtraction: distributed always >= claimed (invariant maintained by atomic updates)
+    (outstanding-a (- distributed-a claimed-a))
+    (outstanding-b (- distributed-b claimed-b))
+
+    ;; cleanup logic:
+    ;; if actual > outstanding: excess from direct transfers → cleanup = actual - outstanding
+    ;; if actual == outstanding and outstanding < dust: precision dust → cleanup = actual (full sweep)
+    ;; otherwise: no cleanup
+    (cleanup-a (if (> actual-a outstanding-a)
+                  (- actual-a outstanding-a)
+                  (if (and (is-eq actual-a outstanding-a)
+                          (< outstanding-a dust-threshold))
+                      actual-a
+                      u0)))
+    (cleanup-b (if (> actual-b outstanding-b)
+                  (- actual-b outstanding-b)
+                  (if (and (is-eq actual-b outstanding-b)
+                          (< outstanding-b dust-threshold))
+                      actual-b
+                      u0)))
+  )
+    (ok {
+      actual-a: actual-a,
+      actual-b: actual-b,
+      claimed-a: claimed-a,
+      claimed-b: claimed-b,
+      cleanup-a: cleanup-a,
+      cleanup-b: cleanup-b,
+      distributed-a: distributed-a,
+      distributed-b: distributed-b,
+      outstanding-a: outstanding-a,
+      outstanding-b: outstanding-b
+    })
+  )
+)
+
+;; permissionless — redistributes untracked tokens back to LP holders via global index
+;; rate-limited to once per 144 blocks (~1 day) to prevent abuse
+;; uses as-contract to call update-rewards-a/b (self-authorized)
+(define-public (cleanup-rewards)
+  (let (
+    (cleanup-data (unwrap-panic (calculate-cleanup-rewards)))
+    (cleanup-a (get cleanup-a cleanup-data))
+    (cleanup-b (get cleanup-b cleanup-data))
+    (last-cleanup (var-get last-cleanup-block))
+  )
+    (begin
+      ;; rate limit — must wait 144 blocks since last cleanup
+      (asserts! (>= burn-block-height (+ last-cleanup CLEANUP_INTERVAL)) 
+        ERR_CLEANUP_INTERVAL)
+
+      ;; redistribute WELSH excess via global index increment
+      ;; as-contract allows street-rewards to call its own update-rewards-a (self-authorized)
+      (if (> cleanup-a u0)
+        (try! (as-contract? ()
+          (try! (update-rewards-a cleanup-a))))
+        true)
+
+      ;; redistribute STREET excess via global index increment
+      (if (> cleanup-b u0)
+        (try! (as-contract? ()
+          (try! (update-rewards-b cleanup-b))))
+        true)
+
+      ;; update last cleanup block regardless of whether amounts were redistributed
+      (var-set last-cleanup-block burn-block-height)
+      (ok {
+        amount-a: cleanup-a,
+        amount-b: cleanup-b,
+      })
+    )
+  )
+)
+
+;; called by credit-controller (LP transfer) and street-market (remove/burn liquidity)
+;; calculates forfeit proportional to decrease, redistributes to remaining LPs (see I-03)
+;; preserves the user's remaining unclaimed via index adjustment (Method 2)
+;; if user's balance reaches 0, entry is deleted from the map
+(define-public (decrease-rewards (user principal) (amount uint))
+  (let (
+    ;; balance is AFTER the LP transfer/burn — reconstruct old-balance by adding amount back
+    (balance (unwrap-panic (contract-call? .credit-token get-balance user)))
+    (block stacks-block-height)
+    (global-a (var-get global-index-a))
+    (global-b (var-get global-index-b))
+
+    ;; unwrap-panic — user must have a rewards entry (created on first increase-rewards)
+    (info (unwrap-panic (map-get? users { account: user })))
+
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+
+    ;; reconstruct pre-transfer balance
+    (old-balance (+ balance amount))
+
+    ;; other LPs who will receive the redistributed forfeit
+    (other-lp (- total-lp old-balance))
+  )
+    (begin
+      ;; only credit-controller and street-market can call
+      (asserts! (or (is-eq contract-caller .credit-controller)
+                    (is-eq contract-caller .street-market)) ERR_NOT_AUTHORIZED)
+      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+      (let (
+        (debt-a (get debt-a info))
+        (debt-b (get debt-b info))
+        (index-a (get index-a info))
+        (index-b (get index-b info))
+
+        ;; earned based on old-balance (pre-transfer)
+        (earned-a (/ (* old-balance (- global-a index-a)) PRECISION))
+        (earned-b (/ (* old-balance (- global-b index-b)) PRECISION))
+        (unclaimed-a (if (> earned-a debt-a) (- earned-a debt-a) u0))
+        (unclaimed-b (if (> earned-b debt-b) (- earned-b debt-b) u0))
+
+        ;; forfeit proportional to decrease: forfeit = unclaimed * amount / old-balance
+        (forfeit-a (/ (* unclaimed-a amount) old-balance))
+        (forfeit-b (/ (* unclaimed-b amount) old-balance))
+
+        ;; redistribute forfeit to remaining LPs via global index (see I-03)
+        ;; if no other LPs, forfeit is effectively burned (index increment = 0)
+        (redistributed-a (if (> other-lp u0)
+                      (/ (* forfeit-a PRECISION) other-lp)
+                      u0))
+        (redistributed-b (if (> other-lp u0)
+                      (/ (* forfeit-b PRECISION) other-lp)
+                      u0))
+      )
+        (begin
+          ;; increment global index by redistributed amounts
+          (if (> forfeit-a u0)
+            (begin
+              (var-set global-index-a (+ global-a redistributed-a)))
+            true)
+          (if (> forfeit-b u0)
+            (begin
+              (var-set global-index-b (+ global-b redistributed-b)))
+            true)
+
+          ;; preserve remaining unclaimed (unclaimed - forfeit) via index adjustment (Method 2)
+          ;; new index = global - (preserve * PRECISION / balance)
+          ;; this positions the user's index so that earned - 0 = preserve amount
+          (let (
+            (new-global-a (var-get global-index-a))
+            (new-global-b (var-get global-index-b))
+            (preserve-a (- unclaimed-a forfeit-a))
+            (preserve-b (- unclaimed-b forfeit-b))
+            (preserve-idx-a (if (and (> balance u0) (> preserve-a u0))
+                        (- new-global-a (/ (* preserve-a PRECISION) balance))
+                        new-global-a))
+            (preserve-idx-b (if (and (> balance u0) (> preserve-b u0))
+                        (- new-global-b (/ (* preserve-b PRECISION) balance))
+                        new-global-b))
+          )
+            ;; if user still holds LP, update entry with preserved index and zeroed debt
+            ;; if balance is 0, delete entry entirely (clean exit — no phantom state)
+            (if (> balance u0)
+              (map-set users
+                { account: user }
+                { balance: balance,
+                  block: block,
+                  debt-a: u0,
+                  debt-b: u0, 
+                  index-a: preserve-idx-a,
+                  index-b: preserve-idx-b
+                })
+              (map-delete users { account: user }))
+            )
+          (ok true)
+        )
+      )
+    )
+  )
+)
+
+;; permissionless — anyone can donate WELSH and/or STREET to the reward pool
+;; tokens transferred from caller to street-rewards, then global index updated
+;; accepts zero for either amount (no-op for that token) (see I-05)
+(define-public (donate-rewards (amount-a uint) (amount-b uint))
+    (begin
+      ;; donate WELSH if amount-a > 0
+      (if (> amount-a u0)
+      (begin
+        ;; transfer from caller to street-rewards — welshcorgicoin uses tx-sender auth
+        (try! (contract-call? .welshcorgicoin transfer amount-a contract-caller .street-rewards none))
+        ;; as-contract to self-authorize update-rewards-a call
+        (try! (as-contract? ()
+          (try! (update-rewards-a amount-a))))
+      )
+        true
+      )
+      ;; donate STREET if amount-b > 0
+      (if (> amount-b u0)
+      (begin
+        (try! (contract-call? .street-token transfer amount-b contract-caller .street-rewards none))
+        (try! (as-contract? ()
+          (try! (update-rewards-b amount-b))))
+      )
+        true
+      )
+    (ok {
+      amount-a: amount-a,
+      amount-b: amount-b
+    })
+  )
+)
+
+;; called by credit-controller (LP transfer) and street-market (provide/initial liquidity)
+;; preserves unclaimed rewards across LP balance increase via index adjustment (Method 2)
+;; new users get fresh entry at current global index with debt: u0
+;; returning users (re-entry after complete exit) also get debt: u0 — phantom debt bug fix
+(define-public (increase-rewards (user principal) (amount uint))
+  (let (
+    ;; balance is AFTER the LP increase — reconstruct old-balance by subtracting amount
+    (balance (unwrap-panic (contract-call? .credit-token get-balance user)))
+    (block stacks-block-height)
+    (global-a (var-get global-index-a))
+    (global-b (var-get global-index-b))
+    (info (map-get? users { account: user }))
+    (old-balance (- balance amount))
+  )
+    (begin
+      ;; only credit-controller and street-market can call
+      (asserts! (or (is-eq contract-caller .credit-controller)
+                    (is-eq contract-caller .street-market)) ERR_NOT_AUTHORIZED)
+      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+
+      ;; existing user: preserve unclaimed by adjusting index backward
+      ;; new-index = global - (unclaimed * PRECISION / new-balance)
+      ;; this positions index so earned - 0 (debt reset) = exact previous unclaimed
+      (if (is-some info)
+        (let (
+          (data (unwrap-panic info))
+          (debt-a (get debt-a data))
+          (debt-b (get debt-b data))
+          (index-a (get index-a data))
+          (index-b (get index-b data))
+          ;; earned based on old-balance (pre-increase)
+          (earned-a (/ (* old-balance (- global-a index-a)) PRECISION))
+          (earned-b (/ (* old-balance (- global-b index-b)) PRECISION))
+          (unclaimed-a (if (> earned-a debt-a) (- earned-a debt-a) u0))
+          (unclaimed-b (if (> earned-b debt-b) (- earned-b debt-b) u0))
+          ;; index adjustment: back-calculate index so (balance * (global - idx) / PRECISION) = unclaimed
+          (preserve-idx-a (if (> unclaimed-a u0)
+                            (- global-a (/ (* unclaimed-a PRECISION) balance))
+                            global-a))
+          (preserve-idx-b (if (> unclaimed-b u0)
+                            (- global-b (/ (* unclaimed-b PRECISION) balance))
+                            global-b))
+        )
+          ;; debt zeroed — unclaimed now encoded entirely in index position
+          (map-set users { account: user } {
+            balance: balance,
+            block: block,
+            debt-a: u0,
+            debt-b: u0,
+            index-a: preserve-idx-a,
+            index-b: preserve-idx-b
+          })
+        )
+        ;; new user (or re-entry after full exit): start at current global index
+        ;; debt: u0 — no phantom debt from previous participation
+        (map-set users { account: user } {
+          balance: balance,
+          block: block,
+          debt-a: u0,
+          debt-b: u0,
+          index-a: global-a,
+          index-b: global-b
+        })
+      )
+      (ok true)
+    )
+  )
+)
+
+;; single-step ownership transfer — no two-step confirmation pattern (see I-01)
+(define-public (set-contract-owner (new-owner principal))
+  (begin
+    ;; contract-caller check — only direct caller, not tx-sender chain
+    (asserts! (is-eq contract-caller (var-get contract-owner)) ERR_NOT_CONTRACT_OWNER)
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; increments global WELSH reward index — called by street-controller (WELSH donations),
+;; street-market (swap fees), and street-rewards itself (cleanup redistribution)
+;; index-increment = floor(amount * PRECISION / total-lp) — truncation creates dust (see I-02)
+;; if total-lp is 0, increment is 0 (rewards deposited but unclaimable until LP exists)
+(define-public (update-rewards-a (amount uint))
+  (let (
+  (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+      (current-index (var-get global-index-a))
+      (index-increment (if (> total-lp u0)
+        (/ (* amount PRECISION) total-lp)
+        u0))
+      (new-index (+ current-index index-increment))
+      (new-rewards (+ (var-get total-distributed-a) amount))
+    )
+    (begin
+      ;; authorized callers: street-controller, street-market, and self (via as-contract)
+      (asserts! (or (is-eq contract-caller .street-controller)
+                    (is-eq contract-caller .street-market)
+                    (is-eq contract-caller .street-rewards)) ERR_NOT_AUTHORIZED)
+      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+      (var-set global-index-a new-index)
+      ;; total-distributed tracks gross amount — used by cleanup accounting
+      (var-set total-distributed-a new-rewards)
+      (ok true)
+    )
+  )
+)
+
+;; increments global STREET reward index — called by street-market (swap fees),
+;; emission-controller (STREET emissions), and street-rewards itself (cleanup)
+(define-public (update-rewards-b (amount uint))
+  (let (
+  (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+      (current-index (var-get global-index-b))
+      (index-increment (if (> total-lp u0)
+        (/ (* amount PRECISION) total-lp)
+        u0))
+      (new-index (+ current-index index-increment))
+      (new-rewards (+ (var-get total-distributed-b) amount))
+    )
+    (begin
+      ;; authorized callers: street-market, self (via as-contract), emission-controller
+      ;; note: different whitelist than update-rewards-a — street-controller not included
+      (asserts! (or (is-eq contract-caller .street-market)
+                    (is-eq contract-caller .street-rewards)
+                    (is-eq contract-caller .emission-controller)) ERR_NOT_AUTHORIZED)
+      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+      (var-set global-index-b new-index)
+      (var-set total-distributed-b new-rewards)
+      (ok true)
+    )
+  )
+)
+
+;; private helper: transfers SIP-010 tokens from street-rewards to recipient
+;; uses as-contract to act as the contract principal for outbound token transfers
+;; trait parameter is safe — only called internally with known tokens (.welshcorgicoin, .street-token)
+(define-private (transformer
+    (token <sip-010>)
+    (amount uint)
+    (recipient principal)
+  )
+  (as-contract? ((with-ft (contract-of token) "*" amount))
+    (try! (contract-call? token transfer amount tx-sender recipient none))
+  )
+)
+
+;; === READ-ONLY FUNCTIONS — no access control needed ===
+
+;; exposes cleanup calculation for off-chain monitoring
+(define-read-only (get-cleanup-rewards)
+  (calculate-cleanup-rewards))
+
+;; returns current contract owner — public information
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner)))
+
+;; complete reward pool state — global indexes and current token balances
+(define-read-only (get-reward-pool-info)
+    (ok {
+      global-index-a: (var-get global-index-a),
+      global-index-b: (var-get global-index-b),
+  rewards-a: (unwrap-panic (contract-call? .welshcorgicoin get-balance .street-rewards)),
+  rewards-b: (unwrap-panic (contract-call? .street-token get-balance .street-rewards)),
+    })
+)
+
+;; per-user reward state — includes live unclaimed calculation
+;; mirrors claim-rewards logic for off-chain display
+(define-read-only (get-reward-user-info (user principal))
+  (let (
+    (balance (unwrap-panic (contract-call? .credit-token get-balance user)))
+    (info (default-to {
+      balance: u0,
+      block: u0,
+      debt-a: u0,
+      debt-b: u0,
+      index-a: u0,
+      index-b: u0}
+      (map-get? users { account: user })))
+    (current-global-a (var-get global-index-a))
+    (current-global-b (var-get global-index-b))
+    (debt-a (get debt-a info))
+    (debt-b (get debt-b info))
+    (user-index-a (get index-a info))
+    (user-index-b (get index-b info))
+    (earned-a (/ (* balance (- current-global-a user-index-a)) PRECISION))
+    (earned-b (/ (* balance (- current-global-b user-index-b)) PRECISION))
+    (unclaimed-a (if (> earned-a debt-a) (- earned-a debt-a) u0))
+    (unclaimed-b (if (> earned-b debt-b) (- earned-b debt-b) u0))
+  )
+    (ok {
+      balance: balance,
+      block: (get block info),
+      debt-a: debt-a,
+      debt-b: debt-b,
+      index-a: user-index-a,
+      index-b: user-index-b,
+      unclaimed-a: unclaimed-a,
+      unclaimed-b: unclaimed-b
+    })
+  )
+)
+```
+</div>
