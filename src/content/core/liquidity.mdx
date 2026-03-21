@@ -27,7 +27,9 @@ The `burn-liquidity` function allows LP token holders to permanently destroy the
     (try! (contract-call? .street-rewards decrease-rewards tx-sender amount))
     
     ;; only street-market can call the credit-token burn function
-    (try! (as-contract (contract-call? .credit-token burn amount)))
+    (try! (as-contract? ((with-ft .credit-token "credit" amount))
+      (try! (contract-call? .credit-token burn amount))))
+
     (ok {
       amount-lp: amount,
     })
@@ -73,6 +75,7 @@ The `lock-liquidity` function creates permanently committed base liquidity that 
           (var-set locked-b (+ lock-b amount-b))
           (var-set reserve-a (+ res-a amount-a))
           (var-set reserve-b (+ res-b amount-b))
+
           (ok { 
             amount-a: amount-a, 
             amount-b: amount-b 
@@ -102,7 +105,7 @@ The `initial-liquidity` function allows the contract owner to set the pool ratio
     (res-b (var-get reserve-b))
 
     ;; used for initialization check
-    (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
 
     ;; sets the initial liquidity pool ration based on geometric mean
     (amount-lp (sqrti (* amount-a amount-b)))
@@ -165,7 +168,7 @@ The `provide-liquidity` function enables normal AMM liquidity provision with LP 
     (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
 
     ;; fetch total-liquidity for ratio calculations
-    (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
   )
     (begin
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
@@ -239,7 +242,7 @@ The `remove-liquidity` function allows LP token holders to withdraw their liquid
     (avail-b (if (>= res-b lock-b) (- res-b lock-b) u0))
 
     ;; fetch total-liquidity for proportional withdrawal
-    (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+    (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
   )
     (begin
       ;; cannot remove zero and pool must be initialized
@@ -276,7 +279,8 @@ The `remove-liquidity` function allows LP token holders to withdraw their liquid
           (try! (contract-call? .street-rewards decrease-rewards tx-sender amount-lp))
 
           ;; burn the returned LP tokens
-          (try! (as-contract (contract-call? .credit-token burn amount-lp)))
+          (try! (as-contract? ((with-ft .credit-token "credit" amount-lp))
+            (try! (contract-call? .credit-token burn amount-lp))))
 
           ;; update total reserves to reflect withdrawn net amounts
           (var-set reserve-a (if (>= res-a amount-a) (- res-a amount-a) u0))

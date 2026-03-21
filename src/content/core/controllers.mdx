@@ -25,8 +25,9 @@ The `credit-controller` contract maintains reward system accounting for the send
       (asserts! (>= sender-balance amount) ERR_BALANCE)
       
       ;; traditional SIP-010 transfer pattern
-      (try! (as-contract (contract-call? .credit-token transfer amount sender recipient memo)))
-      
+      (try! (as-contract? ()
+        (unwrap-panic (contract-call? .credit-token transfer amount sender recipient memo))))
+
       ;; updates sender rewards system accounting
       (try! (as-contract (contract-call? .street-rewards decrease-rewards sender amount)))
       
@@ -74,8 +75,8 @@ The `BOUNTY` exists as a small resistance to sybil attack. The amount is approxi
   (let (
       (last-mint (var-get last-burn-block))
       (blocks-elapsed (- burn-block-height last-mint))
-      (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
-      (caller-credit (unwrap! (contract-call? .credit-token get-balance contract-caller) ERR_BALANCE))
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
+      (caller-credit (unwrap-panic (contract-call? .credit-token get-balance contract-caller)))
       (min-credit (/ total-lp THRESHOLD))
     )
     (begin
@@ -122,16 +123,16 @@ The `street-controller` contract collects a 1,000 WELSH donation per mint as ant
 ;; constants
 
 ;; increased mint amount every 21 mints
-(define-constant MINT_BONUS   u1000000000000)
+(define-constant MINT_BONUS u1000000000000)
 
 ;; standard STREET mint amount
-(define-constant MINT_STREET   u100000000000)
+(define-constant MINT_STREET u100000000000)
 
 ;; WELSH distributed to LP providers.  Protects against sybil attack
-(define-constant DONATE_WELSH    u1000000000)
+(define-constant DONATE_WELSH u1000000000)
 
 ;; Maximum STREET mints and NFTs minted
-(define-constant MINT_CAP             u21000)
+(define-constant MINT_CAP u21000)
 
 ;; variables
 
@@ -140,12 +141,16 @@ The `street-controller` contract collects a 1,000 WELSH donation per mint as ant
 
 (define-public (mint)
   (let (
-      (user-welsh (unwrap-panic (contract-call? .welshcorgicoin get-balance tx-sender)))
+      (user-welsh (unwrap-panic (contract-call? .welshcorgicoin get-balance contract-caller)))
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
       (count (+ (var-get mint-count) u1))
       (is-milestone (is-eq (mod count u21) u0))
       (mint-amount (if is-milestone MINT_BONUS MINT_STREET))
     )
     (begin
+      ;; mint only if there is liquidity
+      (asserts! (> total-lp u0) ERR_NO_LIQUIDITY)
+      
       ;; check wallet for WELSH
       (asserts! (>= user-welsh DONATE_WELSH) ERR_YOU_POOR)
       

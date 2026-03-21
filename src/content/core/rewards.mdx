@@ -123,7 +123,7 @@ The `claim-rewards` function calculates how many WELSH and STREET tokens are cur
 (define-public (claim-rewards)
   (let (
     ;; fetch user's current balance. Guarantees sync with current state
-    (balance (unwrap! (contract-call? .credit-token get-balance contract-caller) ERR_BALANCE))
+    (balance (unwrap-panic (contract-call? .credit-token get-balance contract-caller)))
 
     ;; load or initialize user's reward snapshot
     (info (default-to {
@@ -384,7 +384,7 @@ If a user had no prior rewards snapshot, `increase-rewards` initializes a fresh 
   (let (
     
     ;; user's new CREDIT balance after increase
-    (balance (unwrap! (contract-call? .credit-token get-balance user) ERR_BALANCE))
+    (balance (unwrap-panic (contract-call? .credit-token get-balance user)))
 
     ;; snapshot timing stored into the user record
     (block stacks-block-height)
@@ -488,7 +488,7 @@ The update rewards functions technically are public, however they can only be ca
   (let (
       
       ;; total current CREDIT supply used to split rewards pro‑rata
-      (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
       
       ;; current global index for token-a before adding this amount
       (current-index (var-get global-index-a))
@@ -527,7 +527,7 @@ The update rewards functions technically are public, however they can only be ca
   (let (
 
       ;; total current CREDIT supply used to split rewards pro‑rata
-      (total-lp (unwrap! (contract-call? .credit-token get-total-supply) ERR_SUPPLY))
+      (total-lp (unwrap-panic (contract-call? .credit-token get-total-supply)))
       
       ;; current global index for token-b before adding this amount
       (current-index (var-get global-index-b))
