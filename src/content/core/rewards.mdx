@@ -28,13 +28,61 @@ Explicitly, this index is the total rewards accumulated per 1 CREDIT LP token (f
   unclaimed = lpBalance × (globalIndex − userIndex) / PRECISION
 </div>
 
-Where `PRECISION` is set to 9-decimal places, giving the rewards math three extra digits of fixed‑point precision beyond the usual 6‑decimal SIP‑010 tokens, which minimizes dust and rounding error in small reward distribution calculations.
+Where `PRECISION` is set to 18-decimal places, giving the rewards math twelve extra digits of fixed‑point precision beyond the usual 6‑decimal SIP‑010 tokens, which minimizes dust and rounding error in small reward distribution calculations.
 
 The system only adds to the global indexes; it never iterates over all users to distribute rewards. Every time a user changes their liquidity position, the global index is recorded as their index for each token.
 
 ### Index adjustment
 
 Index adjustment moves the user's index backward or forward so the reward formula yields the correct unclaimed amount on the new balance, then zeroes the debt. The adjusted index doubles as a timestamp of the last liquidity event, and zeroed debt keeps the state clean. In other words, the user debt is only tracked between liquidity events and no total debt needs to be tracked onchain.
+
+### Precision
+
+The `PRECISION` constant is a fixed-point scaling factor that enables fractional arithmetic in Clarity's integer-only environment. Clarity does not support floating-point numbers, so the rewards system uses scaled integer math to preserve fractional precision during division operations.
+
+The constant is set to `1000000000000000000` (10^18), providing 18 decimal places of internal precision. Because SIP-010 tokens use 6 decimals, `PRECISION` adds 12 extra digits beyond standard token precision, minimizing rounding errors when distributing small reward amounts across large LP supplies.
+
+The scaling pattern operates in two phases:
+
+**Adding rewards to the global index:**
+
+<div className="code-transparent">
+```clarity
+;; scale UP before dividing to preserve fractional precision
+(index-increment (if (> total-lp u0)
+  (/ (* amount PRECISION) total-lp)
+  u0))
+```
+</div>
+
+Reward amounts are multiplied by `PRECISION` before division, creating a high-precision "rewards per LP token" value stored in the global index.
+
+**Calculating user rewards:**
+
+<div className="code-transparent">
+```clarity
+;; scale DOWN after multiplication to get actual claimable amount
+(earned-a (/ (* balance (- current-global-a user-index-a)) PRECISION))
+```
+</div>
+
+The scaled index difference is multiplied by the user's balance, then divided by `PRECISION` to yield the actual claimable token amount.
+
+**Example calculation:**
+
+When 1 WELSH (1,000,000 µWELSH in 6-decimal precision) is distributed across 1,000,000 LP tokens:
+
+<div className="code-transparent">
+```clarity
+;; index increment calculation
+(/ (* 1000000 1000000000000000000) 1000000)
+= 1000000000000000000
+
+;; represents exactly 1.0 µWELSH per LP token with zero precision loss
+```
+</div>
+
+Without the `PRECISION` scaling factor, integer division would truncate fractional remainders on every distribution, causing substantial rounding errors that accumulate over time. The 18-decimal precision ensures accurate accounting even for micro-distributions across large LP pools.
 
 ### Preservation Method
 
@@ -73,6 +121,9 @@ The rewards system tracks each user's position and entry timing through a cumula
 <div className="code-transparent">
 ```clarity
 ;; street rewards data structure
+
+;; 18-decimal fixed scaling factor
+(define-constant PRECISION u1000000000000000000)
 
 ;; global cumulative indexes (never decrease, only increase)
 (define-data-var global-index-a uint u0)
