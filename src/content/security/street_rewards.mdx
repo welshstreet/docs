@@ -29,8 +29,8 @@ The street rewards contract is the reward distribution engine for the Welsh Stre
 
 - **Severity:** Informational
 - **Location:** `update-rewards-a`, `update-rewards-b`, `claim-rewards`, `decrease-rewards`, `increase-rewards`
-- **Description:** The global index model uses `PRECISION` (10^9) to scale integer arithmetic, but truncation occurs at every division. In `update-rewards-a/b`, `index-increment = floor(amount * PRECISION / total-lp)` loses the remainder. In `claim-rewards`, `earned = floor(balance * delta / PRECISION)` truncates again. In `decrease-rewards`, forfeit and redistribution calculations each truncate independently. These compound across operations.
-- **Impact:** Small dust amounts become permanently unclaimable over time. The `cleanup-rewards` mechanism exists specifically to recover this accumulated dust and redistribute it. 10^9 precision provides sub-micro-token accuracy for practical balances.
+- **Description:** The global index model uses `PRECISION` (10^18) to scale integer arithmetic, but truncation occurs at every division. In `update-rewards-a/b`, `index-increment = floor(amount * PRECISION / total-lp)` loses the remainder. In `claim-rewards`, `earned = floor(balance * delta / PRECISION)` truncates again. In `decrease-rewards`, forfeit and redistribution calculations each truncate independently. These compound across operations.
+- **Impact:** Small dust amounts become permanently unclaimable over time. The `cleanup-rewards` mechanism exists specifically to recover this accumulated dust and redistribute it. 10^18 precision maintains fractional accuracy when dividing small reward amounts by large LP supplies.
 - **Status:** By design. Integer precision loss is inherent to on-chain reward math. The cleanup mechanism is the explicit mitigation.
 
 ### [I-03] Forfeited rewards redistribute to all remaining LPs including the decrease caller
@@ -71,7 +71,7 @@ The street rewards contract is the reward distribution engine for the Welsh Stre
 |---|-------|--------|
 | 1 | Access Control | Pass — `decrease-rewards` and `increase-rewards` gated to `.credit-controller` and `.street-market`. `update-rewards-a` gated to `.street-controller`, `.street-market`, and `.street-rewards`. `update-rewards-b` gated to `.street-market`, `.street-rewards`, and `.emission-controller`. `claim-rewards`, `donate-rewards`, and `cleanup-rewards` are permissionless. `set-contract-owner` gated by `contract-owner`. |
 | 2 | Input Validation | Pass — zero-amount checks on `decrease-rewards`, `increase-rewards`, `update-rewards-a`, and `update-rewards-b`. `claim-rewards` handles zero unclaimed gracefully (skips transfer, debt unchanged). `cleanup-rewards` validates 144-block interval. |
-| 3 | Arithmetic | Pass — `PRECISION` (10^9) provides high-resolution scaling. All divisions truncate toward zero (standard). Subtraction `earned - debt` guarded by `(if (> earned debt) ...)` returning 0 otherwise. `old-balance` in `decrease-rewards` is `balance + amount` (reconstructed pre-transfer balance) — safe because `decrease-rewards` is called after the LP transfer. Overflow protected by Clarity runtime. See I-02 for precision loss analysis. |
+| 3 | Arithmetic | Pass — `PRECISION` (10^18) provides high-resolution scaling. All divisions truncate toward zero (standard). Subtraction `earned - debt` guarded by `(if (> earned debt) ...)` returning 0 otherwise. `old-balance` in `decrease-rewards` is `balance + amount` (reconstructed pre-transfer balance) — safe because `decrease-rewards` is called after the LP transfer. Overflow protected by Clarity runtime. See I-02 for precision loss analysis. |
 | 4 | Reentrancy / Call Ordering | Pass — Clarity atomic transactions. `claim-rewards` transfers tokens before updating debt/claimed state, but atomic execution prevents reentrancy. `decrease-rewards` is called by `street-market` before LP burn and by `credit-controller` after LP transfer — both orderings are correct for their context. |
 | 5 | Asset Safety | Pass — owner cannot claim, redirect, or extract rewards. `transformer` is private — trait parameter cannot be externally supplied. All token transfers use `try!` with atomic revert. Cleanup can only redistribute tokens already held by the contract. |
 | 6 | Trait Usage | Pass — `transformer` accepts `<sip-010>` trait but is private. Only called internally with `.welshcorgicoin` and `.street-token`. External callers cannot inject malicious trait implementations. |
@@ -102,8 +102,8 @@ No code changes recommended. All six findings are informational observations on 
  
 ;; constants
 
-;; 10^9 scaling factor for index arithmetic — provides sub-micro-token precision (see I-02)
-(define-constant PRECISION u1000000000)
+;; 10^18 scaling factor for index arithmetic — maintains precision when dividing small amounts by large LP supplies (see I-02)
+(define-constant PRECISION u1000000000000000000)
 
 ;; minimum blocks between cleanup calls — ~1 day at ~10 min/block
 (define-constant CLEANUP_INTERVAL u144)
