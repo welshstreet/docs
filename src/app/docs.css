@@ -412,6 +412,7 @@ div[class*="x:bg-nextra-bg"] {
 }
 
 .footer-link {
+  font-size: 0.8rem;
   text-decoration: none !important;
   color: inherit !important;
   transition: color 0.3s ease !important;

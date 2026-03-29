@@ -53,12 +53,12 @@ export default async function RootLayout({ children }) {
           //   </Banner>
           // }
           banner={null}
-          copyPageButton={false}
+          copyPageButton={true}
           docsRepositoryBase="https://github.com/welshstreet/docs/tree/main"
           editLink="View on GitHub"
           feedback={{ content:"Contribute" }}
           footer={<Footer className="custom-footer">
-              <a href="https://github.com/enjoywithouthey" target="_blank" rel="noopener" className="footer-link">Made with 🧡 by @enjoywithouthey</a>
+              <a href="https://x.com/enjoywithouthey" target="_blank" rel="noopener" className="footer-link">Made with 🧡 by @enjoywithouthey</a>
             </Footer>}
           navbar={navbar}
           pageMap={pageMap}
