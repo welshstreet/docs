@@ -31,7 +31,7 @@ export default function IndexPage() {
 					Docs
 				</a>
 				<a 
-					href="https://app.welshtest.net/" 
+					href="https://app.welshstreet.com/" 
 					target="_blank" 
 					rel="noopener noreferrer"
 					className="btn btn-primary btn-exchange"
@@ -40,8 +40,7 @@ export default function IndexPage() {
 				</a>
 			</div>
 			<div className="description">
-				Welsh Street is a decentralized exchange and Meme Rewards Protocol built around WELSH, the first dog meme coin built on Bitcoin.
-				This documentation covers the protocol design, architecture, smart contracts, tokenomics, and terms of service for the project.
+				Welsh Street is a decentralized exchange built around WELSH, the first dog meme coin built on Bitcoin. The Welsh Street Exchange introduces the Meme Rewards Protocol, a perpetual rewards system based on WELSH, STREET and CREDIT. This documentation covers the protocol design, architecture, smart contracts, tokenomics, terms of service and risk disclosures for the project.
 			</div>
 		</div>
 	)
