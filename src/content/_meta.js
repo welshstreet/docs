@@ -3,7 +3,7 @@ export default {
   introduction: 'Introduction',
   welshcorgicoin: 'Welsh Corgi Coin',
   community: 'Community Coins',
-  solution: 'Street Smart Solution',
+  solution: 'Meme Rewards',
   tokenomics: 'Tokenomics',
   privacy: '',
   risk: '',

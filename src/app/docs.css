@@ -526,3 +526,23 @@ a:hover, .footer-link:hover {
 .banner-outer:hover .banner-inner div {
   color: black !important;
 }
+
+/* ============================================================================
+    COPY PAGE DROPDOWN - Hide AI options
+   ============================================================================ */
+
+/* Hide "Open in ChatGPT" and "Open in Claude" options (2nd and 3rd items) */
+[id^="headlessui-listbox-options-"]:has([id^="headlessui-listbox-option-"]) [id^="headlessui-listbox-option-"]:nth-child(2),
+[id^="headlessui-listbox-options-"]:has([id^="headlessui-listbox-option-"]) [id^="headlessui-listbox-option-"]:nth-child(3) {
+  display: none !important;
+}
+
+/* Customize "Copy page" dropdown description text */
+[id^="headlessui-listbox-option-"]:first-child .x\:text-xs {
+  font-size: 0 !important;
+}
+
+[id^="headlessui-listbox-option-"]:first-child .x\:text-xs::after {
+  content: "As Markdown for LLMs";
+  font-size: 0.75rem;
+}

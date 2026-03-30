@@ -1,14 +1,18 @@
 import { Callout } from 'nextra/components'
 
-# The Welsh Street Solution
+# Meme Rewards
 
-The Welsh Street Exchange addresses the community coin paradox by introducing a dedicated meme rewards system. The system combines a fixed-supply monetary base (WELSH) with a fixed-emission, disinflationary rewards asset (STREET) to produce a hybrid capital instrument (CREDIT).
+The Welsh Street Exchange addresses the community coin paradox by introducing a dedicated system referred to as the Meme Rewards Protocol. The rewards system tests whether a fixed-supply monetary base (WELSH) can sustain continuous market activity when paired with a fixed-emission, disinflationary rewards asset (STREET) to produce a hybrid capital instrument (CREDIT).
 
 Welsh Street emerged from the recognition that WELSH required structured economic infrastructure to transition from a static community asset into an active on-chain economy. Because WELSH, STREET, and CREDIT each operate under distinct monetary policies, their interaction requires coordinated market logic and purpose-built reward mechanics.
 
 At its core, the Welsh Street Exchange is a Uniswap V2-style Automated Market Maker (AMM) enhanced with a native rewards layer: Meme Rewards.
 
-## Meme Rewards
+<Callout type="warning" emoji="">
+  <div style={{ textAlign: 'center' }}>Welsh Street is an economic experiment. System viability depends on participant behavior, not protocol enforcement. Market outcomes are not guaranteed.</div>
+</Callout>
+
+## Street Smart Trifecta
 
 Meme Rewards is a structured incentive system built around three interconnected tokens, each with distinct monetary properties that collectively define the system’s economic behavior.
 
@@ -26,7 +30,9 @@ As the fixed-supply foundation of the system, WELSH provides the scarcity anchor
 
 The STREET token is the rewards asset of the Welsh Street system. STREET follows a fixed-emission schedule: a constant quantity of tokens are minted per Bitcoin block. Because total supply grows linearly while issuance remains constant, the inflation rate declines asymptotically over time. This makes STREET a disinflationary token with perpetual emissions.
 
-The continuous issuance of STREET ensures that rewards remain structurally available without requiring a terminal supply cap. As participants receive and deploy STREET within the ecosystem, this creates recurring economic interaction with WELSH, the fixed-supply base asset. The interaction between a non-dilutive monetary base (WELSH) and a disinflationary rewards asset (STREET) forms the core dynamic of the Welsh Street economy.
+The continuous issuance of STREET ensures that rewards remain structurally available without requiring a terminal supply cap. As participants receive and deploy STREET within the ecosystem, this creates recurring economic interaction with WELSH, the fixed-supply base asset.
+
+STREET has no burn mechanism and no supply cap. This is intentional. Perpetual emissions create structural sell pressure on STREET, which creates conditions for conversion to buy pressure on WELSH when participants pair assets to mint CREDIT or execute swaps. Because WELSH has no mint or burn functionality and cannot be modified, introducing a reward token, such as STREET, is the only mechanism available to introduce participation incentives in a crypto-native fashion. This pressure conversion mechanism is designed to enable a fixed-supply community asset to sustain continuous economic activity.
 
 <Callout type="info" emoji="">
   <div style={{ textAlign: 'center' }}>STREET is a disinflationary rewards token with perpetual emissions.</div>
@@ -61,7 +67,9 @@ WELSH operates as a fixed-supply, non-dilutive monetary base. STREET follows a f
 
 Unlike traditional fiat systems where expanding supply dilutes the monetary base, Meme Rewards introduces new STREET emissions while maintaining a fixed WELSH supply. WELSH cannot be debased. Emitted STREET enters circulation through liquidity participation and market activity, creating recurring dynamics between the emission asset (STREET) and the monetary base asset (WELSH).
 
-This interaction transforms WELSH from a static community asset into the foundational unit of account within an active DeFi market. Continuous emissions provide structural incentive for liquidity participation, while WELSH remains the scarcity anchor of the system. The resulting dynamic forms the economic mechanics of the Meme Rewards protocol. On the Welsh Street Exchange, we call this Street Credit. 
+The system's economic logic depends on a pressure conversion mechanism: STREET's perpetual emissions create sell pressure, which participants may absorb by pairing STREET with WELSH to mint CREDIT or by executing swaps through the WELSH/STREET pool. When participants choose to pair assets rather than exit the system, this converts STREET sell pressure into WELSH buy pressure. WELSH, having no native emission or participation mechanism, gains potential for structural demand through STREET's existence. STREET, having no burn or supply cap, maintains continuous participation incentives without artificial scarcity.
+
+This interaction is designed to transform WELSH from a static community asset into the foundational unit of account within an active DeFi market. Continuous emissions provide structural incentive for liquidity participation, while WELSH remains the scarcity anchor of the system. The resulting dynamic forms the economic mechanics of the system referred to as the Meme Rewards Protocol.
 
 ![WELSH Corgi on the Wall Street Trading Floor ](/whiteboard-lb.png)
 
@@ -85,18 +93,20 @@ Monetary Base Asset + Disinflationary Rewards Asset = Hybrid Capital Instrument
 
 The economic perspective defines the three tokens in economic terms. In this model, WELSH is a fixed-supply asset and STREET is a fixed-emission asset. This makes CREDIT a composite liquidity asset.  WELSH being fixed, has no `mint` or `burn` functionality. STREET can only be minted, and cannot be burned, which defines its perpetual supply.  CREDIT can both be minted and burned, but only according to how much WELSH and STREET is committed to the system, making CREDIT not fixed-supply, nor fixed-emission.
 
+The absence of a burn mechanism for STREET is a design feature, not an oversight. STREET's sell pressure is designed to generate demand for WELSH, the fixed-supply asset. Without STREET, WELSH has no mechanism to incentivize participation or liquidity provision. STREET's perpetual emissions address this by creating a continuous flow intended to interact with WELSH within the system. Whether participants systematically reabsorb STREET into the liquidity pool determines the system's long-term sustainability.
+
 <div className="equation">
 Fixed-supply Token + Fixed Emission Token = Composite Liquidity Asset
 </div>
 
 ### Crypto-native Perspective
 
-From the Crypto-native or degen perspective, WELSH has similar tokenomics to Bitcoin (assuming Bitcoin reaches is final non-inflationary phase in approximately the year 2140). STREET has similar tokenomics to DOGE.  Bitcoin and DOGE, as they exist on sperate blockchains, can only be swapped using third party, off-chain, or centralized systems, such as a Centralized Exchange (CEX).
+From the crypto-native perspective, WELSH draws conceptual inspiration from Bitcoin's fixed-supply model (assuming Bitcoin reaches its final non-inflationary phase around 2140). STREET follows emission mechanics reminiscent of DOGE's perpetual issuance. Bitcoin and DOGE, existing on separate blockchains, can only be exchanged through third-party bridges or centralized venues.
 
-Combining the tokenomics of Bitcoin and DOGE to create a novel cryptocurrency asset CREDIT, is the very core, novel application of CREDIT. 
+CREDIT represents an on-chain composition of these two distinct tokenomic models — fixed-supply scarcity paired with perpetual emissions — unified within a single liquidity market. For crypto natives familiar with both models, CREDIT offers a novel experiment in combining opposing monetary policies.
 
 <div className="equation">
-Bitcoin + DOGE = Novel, Experimental Cryptocurrency
+Bitcoin-style Scarcity + DOGE-style Emissions = On-chain Tokenomics Experiment
 </div>
 
 ## Wall Street to Welsh Street
