@@ -7,7 +7,26 @@ export const generateStaticParams = generateStaticParamsFor('mdxPath')
 export async function generateMetadata(props) {
   const params = await props.params
   const { metadata } = await importPage(params.mdxPath)
-  return metadata
+  
+  const title = metadata.title || 'Welsh Street Documentation'
+  const description = metadata.description || 'Complete documentation for the Welsh Street protocol - a Bitcoin-anchored DeFi system on Stacks.'
+  
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      images: ['/credit.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/credit.png'],
+    },
+  }
 }
 
 const Wrapper = getMDXComponents().wrapper

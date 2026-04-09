@@ -9,13 +9,39 @@ import MaintenanceOverlay from '../components/maintenance-overlay'
 export const metadata = {
   metadataBase: new URL('https://docs.welshstreet.com/'),
   title: {
-    template: '%s'
+    template: '%s | Welsh Street Docs',
+    default: 'Welsh Street Documentation'
   },
-  description: 'Welsh Street Documentation',
+  description: 'Complete documentation for Welsh Street and the Meme Rewards Protocol - a Bitcoin-anchored DeFi system on Stacks.',
   applicationName: 'Welsh Street',
+  
+  // OpenGraph (Facebook, LinkedIn, Discord)
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://docs.welshstreet.com/',
+    siteName: 'Welsh Street Documentation',
+    title: 'Welsh Street Documentation',
+    description: 'Complete documentation for the Welsh Street protocol - a Bitcoin-anchored DeFi system on Stacks.',
+    images: [
+      {
+        url: '/credit.png',
+        width: 420,
+        height: 420,
+        alt: 'Welsh Street Documentation',
+      }
+    ],
+  },
+  
+  // Twitter/X Cards
   twitter: {
-    site: 'https://x.com/welshstreet'
-  }
+    card: 'summary_large_image',
+    site: '@welshstreet',
+    creator: '@welshstreet',
+    title: 'Welsh Street Documentation',
+    description: 'Complete documentation for the Welsh Street protocol - a Bitcoin-anchored DeFi system on Stacks.',
+    images: ['/credit.png'],
+  },
 }
 
 // Toggle this to enable/disable maintenance mode
