@@ -69,6 +69,11 @@ Unlike most DEXs that use internal accounting or NFT positions, Welsh Street iss
 ```
 </div>
 
+## Credit Transfer
+
+In the Meme Rewards Protocol, the CREDIT token is mathematically tied to the rewards accounting system.  Therefore ever transfer of the CREDIT token must update the rewards tracking for the sender and the recipient. 
+
+Therefore, authorizations are placed on the `transfer` function which makes normal in-wallet transfers fail.  In order to transfer CREDIT tokens from wallet to wallet, or address to address, user's must utilize the [credit controller](/docs/core/controllers#credit-controller) function or the UI found on [Welsh Street](https://app.welshstreet.com/transfer).
 
 ## Liquidity Token Models
 
@@ -110,4 +115,4 @@ CREDIT supply is dynamic — minted when users provide liquidity, burned when us
 - **Symbol**: CREDIT
 - **Supply**: Dynamic (minted/burned with liquidity operations)
 - **Mint Authority**: `street-market.clar` only (contract-caller authorization)
-- **Contract Link**: [credit-token](/#)
+- **Contract Link**: [credit-token](https://explorer.hiro.so/token/SP2A7PT3DMWVT2BHHMKQ2T0Y4AA05NST96SDM2FCE.credit-token?chain=mainnet)
