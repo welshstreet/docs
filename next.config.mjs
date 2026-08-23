@@ -32,6 +32,7 @@ const withNextra = nextra({
 
 export default withNextra({
   reactStrictMode: true,
+  outputFileTracingRoot: import.meta.dirname,
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Additional server-side polyfills
