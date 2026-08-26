@@ -6,6 +6,7 @@ export default {
   liquidity: 'Liquidity',
   rewards: 'Rewards',
   swap: 'Swaps',
+  price: 'Price',
   protection: 'User Protection',
   testing: 'Testing Coverage',
 }

@@ -1,0 +1,85 @@
+# Welsh Street Price Engine
+
+## Price Calculations in DEX
+
+Welsh Street uses a constant-product automated market maker (AMM) to set
+exchange rates between WELSH and STREET. Rather than relying on a single
+price oracle, the protocol anchors to an external WELSH market price and then
+lets on-pool trading activity determine STREET's price relative to it. CREDIT,
+in turn, is priced off the USD value of the WELSH and STREET actually held in
+reserves.
+
+## Welsh Price Anchor
+
+[![CoinGecko API](/coin-gecko-api.png)](https://www.coingecko.com/en/api)
+
+WELSH's USD reference price is pulled from the [CoinGecko API](https://www.coingecko.com/en/api)
+on a recurring schedule (roughly every 10 minutes) and cached as the current
+external "anchor" price. This anchor represents WELSH's broader market price
+across exchanges, independent of activity on the Welsh Street AMM itself.
+
+## AMM Prices
+
+Every successful trade on the STREET/WELSH pool moves the pool's reserves,
+and the protocol uses that reserve movement to adjust the cached WELSH anchor
+into an AMM-specific WELSH price:
+
+```
+AMM WELSH price = anchor price × (new WELSH reserve ÷ previous WELSH reserve)
+```
+
+In other words, the AMM starts from the external CoinGecko anchor and then
+nudges it up or down based on how much WELSH just flowed into or out of the
+pool. Heavy one-sided trading pushes the AMM's WELSH price away from the
+external market price; light or balanced trading keeps it close to the
+anchor. This is why the WELSH price used inside Welsh Street can, at times,
+differ from WELSH's price on other exchanges — see [Arbitrage](#arbitrage)
+below.
+
+### Welsh Price
+
+The AMM WELSH price (above) is the USD price used for all downstream
+calculations on Welsh Street. It always starts from the CoinGecko anchor and
+reflects a small, continuously updating adjustment for the pool's own recent
+trading activity.
+
+### Street Price
+
+STREET has no external market of its own — the AMM pool is its only price
+discovery mechanism. STREET's USD price is derived by dividing the AMM WELSH
+price by the pool's own STREET-to-WELSH reserve ratio:
+
+```
+STREET price = AMM WELSH price ÷ (STREET reserve ÷ WELSH reserve)
+```
+
+As trading shifts the reserve ratio, STREET's price moves accordingly — pure
+constant-product price discovery, anchored to WELSH.
+
+### Credit Price
+
+CREDIT is priced as a backing (net-asset-value) calculation rather than a
+traded market price. It reflects the USD value of the WELSH and STREET
+currently held in reserves, divided by CREDIT's total supply:
+
+```
+CREDIT price = (WELSH held in reserves × WELSH price
+              + STREET held in reserves × STREET price)
+              ÷ total CREDIT supply
+```
+
+To reduce noise from individual trades, the STREET and CREDIT prices shown to
+users are smoothed over short (5-minute) rolling windows rather than
+reflecting every single swap instantaneously.
+
+## Arbitrage
+
+Because WELSH trades across multiple decentralized exchanges throughout the
+Stacks ecosystem, its price can briefly diverge between venues — including
+between Welsh Street's own AMM and the external CoinGecko-tracked market
+price (see [AMM Prices](#amm-prices) above). Traders who spot this gap can
+profit by buying WELSH where it's cheaper and selling where it's more
+expensive, which pushes prices back toward alignment. This arbitrage activity
+is a normal, healthy part of how decentralized markets operate — and each
+arbitrage trade also adds to trading volume and liquidity depth across the
+ecosystem.
