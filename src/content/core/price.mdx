@@ -11,12 +11,17 @@ reserves.
 
 ## Welsh Price Anchor
 
-[![CoinGecko API](/coin-gecko-api.png)](https://www.coingecko.com/en/api)
-
-WELSH's USD reference price is pulled from the [CoinGecko API](https://www.coingecko.com/en/api)
+WELSH's USD reference price is pulled from [ALEX Lab](https://docs.alexlab.co/)
 on a recurring schedule (roughly every 10 minutes) and cached as the current
 external "anchor" price. This anchor represents WELSH's broader market price
 across exchanges, independent of activity on the Welsh Street AMM itself.
+
+<div style={{ display: 'flex', justifyContent: 'center', margin: '2rem 0' }}>
+
+[![ALEX Lab](/ALEXLabFoundation_logo.svg)](https://docs.alexlab.co/)
+
+</div>
+
 
 ## AMM Prices
 
@@ -28,7 +33,7 @@ into an AMM-specific WELSH price:
 AMM WELSH price = anchor price × (new WELSH reserve ÷ previous WELSH reserve)
 ```
 
-In other words, the AMM starts from the external CoinGecko anchor and then
+In other words, the AMM starts from the external ALEX Lab anchor and then
 nudges it up or down based on how much WELSH just flowed into or out of the
 pool. Heavy one-sided trading pushes the AMM's WELSH price away from the
 external market price; light or balanced trading keeps it close to the
@@ -39,7 +44,7 @@ below.
 ### Welsh Price
 
 The AMM WELSH price (above) is the USD price used for all downstream
-calculations on Welsh Street. It always starts from the CoinGecko anchor and
+calculations on Welsh Street. It always starts from the ALEX Lab anchor and
 reflects a small, continuously updating adjustment for the pool's own recent
 trading activity.
 
@@ -76,7 +81,7 @@ reflecting every single swap instantaneously.
 
 Because WELSH trades across multiple decentralized exchanges throughout the
 Stacks ecosystem, its price can briefly diverge between venues — including
-between Welsh Street's own AMM and the external CoinGecko-tracked market
+between Welsh Street's own AMM and the external ALEX Lab-tracked market
 price (see [AMM Prices](#amm-prices) above). Traders who spot this gap can
 profit by buying WELSH where it's cheaper and selling where it's more
 expensive, which pushes prices back toward alignment. This arbitrage activity
